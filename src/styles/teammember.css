@@ -1,0 +1,88 @@
+.contentContainer-0-1-726 {
+  padding-bottom: 100px;
+}
+.root-0-1-732 {
+  height: auto;
+  display: inline-block;
+  padding: 32px;
+  min-width: 100%;
+  border-radius: 24px;
+  background-color: white;
+}
+.sections-0-1-727 {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.leftSection-0-1-728 {
+  flex: 1 1 0px;
+  /* max-width: 656px; */
+  flex-basis: 0px;
+}
+.label-0-1-733 {
+  margin-bottom: 16px;
+}
+.labelText-0-1-734 {
+  color: rgb(51, 51, 51);
+  font-size: 15px;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+.inputContainer-0-1-133 {
+  margin: 0px;
+  padding: 0px;
+  position: relative;
+}
+.input-0-1-134 {
+  padding: 6px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  width: 100%;
+}
+.toggleBar-0-1-171 {
+  padding: 16px;
+  flex-wrap: wrap;
+  background: #f4f9fd;
+  border-radius: 16px;
+  margin: 6px;
+}
+.toggleContainer-0-1-177 {
+  display: flex;
+  position: relative;
+  align-items: center;
+  border-radius: 14px;
+  justify-content: space-between;
+}
+.textSubText-0-1-183 {
+  gap: 5px;
+  display: flex;
+  flex-direction: column;
+}
+/* .toggleHeading-0-1-178 { */
+/* color: rgba(10, 22, 41); */
+/* font-size: 16px; */
+/* font-family: Nunito Sans; */
+/* font-weight: 700; */
+/* } */
+.permissionIconTextWrap-0-1-172 {
+  color: #0a1629;
+  display: flex;
+  font-size: 15px;
+  align-items: center;
+  font-weight: 700;
+}
+.permissionIconTextWrapIcon-0-1-173 {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  background: #e0f3fb;
+  align-items: center;
+  margin-right: 16px;
+  border-radius: 50%;
+  justify-content: center;
+}
+.textWrapper-0-1-176 {
+  display: flex;
+  flex-direction: column;
+}
