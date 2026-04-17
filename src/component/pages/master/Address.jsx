@@ -10,8 +10,10 @@ import { FaCheckCircle } from "react-icons/fa";
 import { MdBlock } from "react-icons/md";
 import { MdEdit } from "react-icons/md";
 import { Button, Modal } from "react-bootstrap";
+import { useConfirm } from "../../common/ConfirmProvider";
 
 function Address() {
+  const confirm = useConfirm();
   const [stateName, setStateName] = useState("");
   const [selectedStateId, setSelectedStateId] = useState("");
   const [cityName, setCityName] = useState("");
@@ -126,6 +128,14 @@ function Address() {
   };
 
   const deleteCity = async (id) => {
+    const ok = await confirm({
+      title: "Delete Address",
+      message: "Are you sure you want to delete this address? This action cannot be undone.",
+      confirmText: "Yes, Delete",
+      cancelText: "No",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       const res = await axios.delete(
         `${apiUrl.BASEURL}${apiUrl.DELETE_ADDRESS}${id}`,
@@ -140,13 +150,21 @@ function Address() {
   };
 
   const activeStatus = async (id) => {
+    const ok = await confirm({
+      title: "Activate Address",
+      message: "Are you sure you want to change the status to Active?",
+      confirmText: "Yes, Activate",
+      cancelText: "No",
+      variant: "success",
+    });
+    if (!ok) return;
     try {
       const res = await axios.put(
         `${apiUrl.BASEURL}${apiUrl.ADDRESS_ACTIVE_STATUS}${id}`,
       );
       if (res.status === 200) {
         fetchAdres();
-        alert(res.data.message || "State status updated!");
+        alert(res.data.message || "Address status updated!");
       }
     } catch (error) {
       console.error("Error updating state status:", error);
@@ -154,13 +172,21 @@ function Address() {
   };
 
   const inActiveStatus = async (id) => {
+    const ok = await confirm({
+      title: "Deactivate Address",
+      message: "Are you sure you want to change the status to Inactive?",
+      confirmText: "Yes, Deactivate",
+      cancelText: "No",
+      variant: "warning",
+    });
+    if (!ok) return;
     try {
       const res = await axios.put(
         `${apiUrl.BASEURL}${apiUrl.ADDRESS_INACTIVE_STATUS}${id}`,
       );
       if (res.status === 200) {
         fetchAdres();
-        alert(res.data.message || "State status updated!");
+        alert(res.data.message || "Address status updated!");
       }
     } catch (error) {
       console.error("Error updating state status:", error);

@@ -6,8 +6,10 @@ import { MdDelete } from "react-icons/md";
 import axios from "axios";
 import { apiUrl } from "../../../api-services/apiContents";
 import Loader from "../../loader/Loader";
+import { useConfirm } from "../../common/ConfirmProvider";
 
 function Banner() {
+  const confirm = useConfirm();
   const [bannerImages, setBannerImages] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [allBanners, setAllBanners] = useState([]);
@@ -65,6 +67,14 @@ function Banner() {
   };
 
   const deleteBanners = async (ele) => {
+    const ok = await confirm({
+      title: "Delete Banner",
+      message: "Are you sure you want to delete this banner? This action cannot be undone.",
+      confirmText: "Yes, Delete",
+      cancelText: "No",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       const res = await axios.delete(
         `${apiUrl.BASEURL}${apiUrl.DELETE_BANNER}${ele._id}`,

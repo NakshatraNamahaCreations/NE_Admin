@@ -15,9 +15,11 @@ import { FaUserTie } from "react-icons/fa";
 import { CgUnblock } from "react-icons/cg";
 import { MdEdit } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
+import { useConfirm } from "../../../common/ConfirmProvider";
 
 function TeamList() {
   const Navigate = useNavigate();
+  const confirm = useConfirm();
   const [teamMembers, setTeamMembers] = useState([]);
   // const [vendorsLength, setVendorsLength] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,6 +60,14 @@ function TeamList() {
   });
 
   const blockUser = async (id) => {
+    const ok = await confirm({
+      title: "Block User",
+      message: "Are you sure you want to block this user? They will lose access until unblocked.",
+      confirmText: "Yes, Block",
+      cancelText: "No",
+      variant: "warning",
+    });
+    if (!ok) return;
     try {
       const res = await axios.put(
         `${apiUrl.BASEURL}${apiUrl.BLOCK_USER}/${id}`,
@@ -78,6 +88,14 @@ function TeamList() {
     }
   };
   const unblockUser = async (id) => {
+    const ok = await confirm({
+      title: "Unblock User",
+      message: "Are you sure you want to unblock this user?",
+      confirmText: "Yes, Unblock",
+      cancelText: "No",
+      variant: "success",
+    });
+    if (!ok) return;
     try {
       const res = await axios.put(
         `${apiUrl.BASEURL}${apiUrl.UNBLOCK_USER}/${id}`,
@@ -106,6 +124,14 @@ function TeamList() {
   };
 
   const deleteUser = async (ele) => {
+    const ok = await confirm({
+      title: "Delete Team Member",
+      message: `Are you sure you want to delete ${ele?.member_name || "this member"}? This action cannot be undone.`,
+      confirmText: "Yes, Delete",
+      cancelText: "No",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       const res = await axios.delete(
         `${apiUrl.BASEURL}${apiUrl.DELETE_TEAM_USER}${ele._id}`,

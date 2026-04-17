@@ -7,9 +7,11 @@ import Loader from "../../loader/Loader";
 import axios from "axios";
 import { apiUrl } from "../../../api-services/apiContents";
 import { useNavigate } from "react-router-dom";
+import { useConfirm } from "../../common/ConfirmProvider";
 
 function FAQList() {
   const Navigate = useNavigate();
+  const confirm = useConfirm();
   const [userFaqList, setUserFaqList] = useState([]);
   const [vendorFaqList, setVendorFaqList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -59,12 +61,19 @@ function FAQList() {
   };
 
   const deleteFaq = async (ele) => {
+    const ok = await confirm({
+      title: "Delete FAQ",
+      message: "Are you sure you want to delete this FAQ? This action cannot be undone.",
+      confirmText: "Yes, Delete",
+      cancelText: "No",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       const res = await axios.delete(
         `${apiUrl.BASEURL}${apiUrl.DELETE_FAQ}${ele._id}`,
       );
       if (res.status === 200) {
-        console.log("deletevres", res);
         alert(res.data.success || "FAQ Deleted");
         window.location.reload();
       }
@@ -75,17 +84,23 @@ function FAQList() {
   };
 
   const toggleServiceStatus = async (id, currentStatus) => {
+    const next = !currentStatus;
+    const ok = await confirm({
+      title: `${next ? "Activate" : "Deactivate"} FAQ`,
+      message: `Are you sure you want to change the status to ${next ? "Active" : "Inactive"}?`,
+      confirmText: "Yes",
+      cancelText: "No",
+      variant: next ? "success" : "warning",
+    });
+    if (!ok) return;
     try {
       const res = await axios.put(
         `${apiUrl.BASEURL}${apiUrl.FAQ_STATUS}${id}`,
-        {
-          isActive: !currentStatus,
-        },
+        { isActive: next },
       );
       if (res.status === 200) {
         fetchUserFAQ();
         fetchVendorFAQ();
-        // fetchFAQ();
         alert(res.data.message || "Status updated!");
       }
     } catch (error) {

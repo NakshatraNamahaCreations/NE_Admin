@@ -8,9 +8,11 @@ import { apiUrl } from "../../../api-services/apiContents";
 import { useNavigate } from "react-router-dom";
 import { FaCheckCircle } from "react-icons/fa";
 import { postData } from "../../../api-services/apiHelper";
+import { useConfirm } from "../../common/ConfirmProvider";
 
 function Youtube() {
   const Navigate = useNavigate();
+  const confirm = useConfirm();
   const [videoList, setVideoList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [linkUrl, setLinkUrl] = useState("");
@@ -66,6 +68,14 @@ function Youtube() {
   };
 
   const deleteLink = async (ele) => {
+    const ok = await confirm({
+      title: "Delete Video Link",
+      message: "Are you sure you want to delete this video link? This action cannot be undone.",
+      confirmText: "Yes, Delete",
+      cancelText: "No",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       const res = await axios.delete(
         `${apiUrl.BASEURL}${apiUrl.DELETE_YOUTUBE_LINK}${ele}`,
@@ -81,6 +91,14 @@ function Youtube() {
   };
 
   const activeStatus = async (id) => {
+    const ok = await confirm({
+      title: "Activate Video",
+      message: "Are you sure you want to change the status to Active?",
+      confirmText: "Yes, Activate",
+      cancelText: "No",
+      variant: "success",
+    });
+    if (!ok) return;
     try {
       const res = await axios.put(
         `${apiUrl.BASEURL}${apiUrl.YOUTUBE_LINK_ACTIVE_STATUS}${id}`,
@@ -95,6 +113,14 @@ function Youtube() {
   };
 
   const inActiveStatus = async (id) => {
+    const ok = await confirm({
+      title: "Deactivate Video",
+      message: "Are you sure you want to change the status to Inactive?",
+      confirmText: "Yes, Deactivate",
+      cancelText: "No",
+      variant: "warning",
+    });
+    if (!ok) return;
     try {
       const res = await axios.put(
         `${apiUrl.BASEURL}${apiUrl.YOUTUBE_LINK_INACTIVE_STATUS}${id}`,

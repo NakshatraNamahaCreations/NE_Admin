@@ -8,8 +8,10 @@ import { MdEdit } from "react-icons/md";
 import { MdDelete, MdBlock } from "react-icons/md";
 import { Offcanvas, Table } from "react-bootstrap";
 import EditTNC from "./EditTNC";
+import { useConfirm } from "../../common/ConfirmProvider";
 
 function TCList() {
+  const confirm = useConfirm();
   // const [content, Content] = useState({});
   const [vendorContent, setVendorContent] = useState([]);
   const [userContent, setUserContent] = useState([]);
@@ -79,12 +81,19 @@ function TCList() {
   }, []);
 
   const deleteData = async (ele) => {
+    const ok = await confirm({
+      title: "Delete T&C",
+      message: "Are you sure you want to delete this entry? This action cannot be undone.",
+      confirmText: "Yes, Delete",
+      cancelText: "No",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       const res = await axios.delete(
         `${apiUrl.BASEURL}${apiUrl.DELETE_TNC}${ele._id}`,
       );
       if (res.status === 200) {
-        // console.log("deletevres", res);
         alert(res.data.success || "Deleted");
         window.location.reload();
       }

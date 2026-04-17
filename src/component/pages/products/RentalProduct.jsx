@@ -1,5 +1,5 @@
 import axios from "axios";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { apiUrl } from "../../../api-services/apiContents";
 import Loader from "../../loader/Loader";
 import { useNavigate } from "react-router-dom";
@@ -10,14 +10,25 @@ import { MdDelete, MdMotionPhotosOff } from "react-icons/md";
 import { FaCheck } from "react-icons/fa6";
 import { FaDownload } from "react-icons/fa6";
 import * as XLSX from "xlsx";
+import { useConfirm } from "../../common/ConfirmProvider";
+
+const normalize = (v) =>
+  v === null || v === undefined ? "" : String(v).toLowerCase().trim();
 
 function RentalProduct() {
+  const confirm = useConfirm();
   const [allRentalProduct, setAllRentalProduct] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const Navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusType, setStatusType] = useState("");
   const [categoryType, setCategoryType] = useState("Select");
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search), 180);
+    return () => clearTimeout(id);
+  }, [search]);
 
   const categories = [
     {
@@ -66,6 +77,14 @@ function RentalProduct() {
   }, []);
 
   const deleteProduct = async (id) => {
+    const ok = await confirm({
+      title: "Delete Product",
+      message: "Are you sure you want to delete this product? This action cannot be undone.",
+      confirmText: "Yes, Delete",
+      cancelText: "No",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       const res = await axios.delete(
         `${apiUrl.BASEURL}${apiUrl.DELETE_PRODUCT}${id}`,
@@ -73,7 +92,6 @@ function RentalProduct() {
       if (res.status === 200) {
         alert("Product Deleted");
         fetchData();
-        // window.location.reload();
       }
     } catch (error) {
       console.error("Error:", error);
@@ -88,29 +106,30 @@ function RentalProduct() {
     });
   };
 
-  const searchResults =
-    allRentalProduct.length > 0
-      ? allRentalProduct
-          .filter((prod) => {
-            if (search) {
-              const lowerSearch = search.toLowerCase();
-              return (
-                prod.product_name.toLowerCase().includes(lowerSearch) ||
-                prod.vendor_name.toLowerCase().includes(lowerSearch) ||
-                prod.shop_name.toLowerCase().includes(lowerSearch)
-              );
-            }
-            return true;
-          })
-          .filter((item) => {
-            if (statusType === "") return true;
-            return item.approval_status === statusType;
-          })
-          .filter((ele) => {
-            if (categoryType === "Select") return true;
-            return ele.product_category === categoryType;
-          })
-      : [];
+  const searchResults = useMemo(() => {
+    if (!allRentalProduct.length) return [];
+    const term = normalize(debouncedSearch);
+    const catFilter = normalize(categoryType === "Select" ? "" : categoryType);
+    const statusFilter = normalize(statusType);
+    const terms = term.split(/\s+/).filter(Boolean);
+
+    return allRentalProduct.filter((item) => {
+      if (catFilter && normalize(item.product_category) !== catFilter) return false;
+      if (statusFilter && normalize(item.approval_status) !== statusFilter) return false;
+      if (!terms.length) return true;
+      const haystack = [
+        item.product_name,
+        item.vendor_name,
+        item.shop_name,
+        item.product_category,
+        item.product_type,
+        item.approval_status,
+      ]
+        .map(normalize)
+        .join(" ");
+      return terms.every((t) => haystack.includes(t));
+    });
+  }, [allRentalProduct, debouncedSearch, statusType, categoryType]);
 
   const columns = [
     {

@@ -14,9 +14,11 @@ import * as XLSX from "xlsx";
 import { TbFileTypeXls } from "react-icons/tb";
 import axios from "axios";
 import { FaDownload } from "react-icons/fa6";
+import { useConfirm } from "../../../common/ConfirmProvider";
 
 function VendorList() {
   const Navigate = useNavigate();
+  const confirm = useConfirm();
   const [vendors, setVendors] = useState([]);
   const [search, setSearch] = useState("");
   const [showFilter, setShowFilter] = useState(false);
@@ -60,6 +62,14 @@ function VendorList() {
   };
 
   const deleteVendor = async (id) => {
+    const ok = await confirm({
+      title: "Delete Vendor",
+      message: "Are you sure you want to delete this vendor? This action cannot be undone.",
+      confirmText: "Yes, Delete",
+      cancelText: "No",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       const res = await axios.delete(
         `${apiUrl.BASEURL}${apiUrl.DELETE_VENDOR}${id}`,
@@ -79,7 +89,8 @@ function VendorList() {
         return (
           vdr.vendor_name.toLowerCase().includes(search.toLowerCase()) ||
           vdr.mobile_number.toLowerCase().includes(search.toLowerCase()) ||
-          vdr.profession.toLowerCase().includes(search.toLowerCase())
+          vdr.profession.toLowerCase().includes(search.toLowerCase()) ||
+          vdr.shop_name?.toLowerCase().includes(search.toLowerCase())
         );
       }
       return true;
@@ -137,6 +148,14 @@ function VendorList() {
     {
       name: "Professional",
       selector: (row) => row.profession,
+    },
+    {
+      name: "Shop Name",
+      selector: (row) => row.shop_name,
+    },
+    {
+      name: "Registered On",
+      selector: (row) => row.createdAt?.substring(0, 10),
     },
     {
       name: "Status",
@@ -243,7 +262,7 @@ function VendorList() {
               <input
                 type="search"
                 value={search}
-                placeholder="Search..."
+                placeholder="Search by vendor name, mobile number, profession, shop name"
                 onChange={(e) => setSearch(e.target.value)}
                 style={{
                   fontSize: "14px",

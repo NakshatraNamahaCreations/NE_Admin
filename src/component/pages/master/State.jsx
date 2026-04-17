@@ -9,8 +9,10 @@ import * as XLSX from "xlsx";
 import { MdBlock } from "react-icons/md";
 import { MdEdit } from "react-icons/md";
 import { FaCheckCircle } from "react-icons/fa";
+import { useConfirm } from "../../common/ConfirmProvider";
 
 function State() {
+  const confirm = useConfirm();
   const [stateName, setStateName] = useState("");
   const [stateCode, setStateCode] = useState("");
   const [searchState, setSearchState] = useState("");
@@ -57,6 +59,14 @@ function State() {
     }
   };
   const deleteState = async (id) => {
+    const ok = await confirm({
+      title: "Delete State",
+      message: "Are you sure you want to delete this state? This action cannot be undone.",
+      confirmText: "Yes, Delete",
+      cancelText: "No",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       const res = await axios.delete(
         `${apiUrl.BASEURL}${apiUrl.DELETE_STATE}${id}`,
@@ -71,6 +81,14 @@ function State() {
   };
 
   const activeStatus = async (id) => {
+    const ok = await confirm({
+      title: "Activate State",
+      message: "Are you sure you want to change the status to Active?",
+      confirmText: "Yes, Activate",
+      cancelText: "No",
+      variant: "success",
+    });
+    if (!ok) return;
     try {
       const res = await axios.put(
         `${apiUrl.BASEURL}${apiUrl.ACTIVE_STATUS}${id}`,
@@ -85,6 +103,14 @@ function State() {
   };
 
   const inActiveStatus = async (id) => {
+    const ok = await confirm({
+      title: "Deactivate State",
+      message: "Are you sure you want to change the status to Inactive?",
+      confirmText: "Yes, Deactivate",
+      cancelText: "No",
+      variant: "warning",
+    });
+    if (!ok) return;
     try {
       const res = await axios.put(
         `${apiUrl.BASEURL}${apiUrl.INACTIVE_STATUS}${id}`,

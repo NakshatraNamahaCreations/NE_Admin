@@ -12,9 +12,11 @@ import { MdBlock } from "react-icons/md";
 import { CgUnblock } from "react-icons/cg";
 import { FaDownload } from "react-icons/fa";
 import * as XLSX from "xlsx";
+import { useConfirm } from "../../../common/ConfirmProvider";
 
 function UserList() {
   // const Navigate = useNavigate();
+  const confirm = useConfirm();
   const [userList, setUserList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -85,6 +87,14 @@ function UserList() {
   });
 
   const handleDeleteUser = async (id) => {
+    const ok = await confirm({
+      title: "Delete User",
+      message: "Are you sure you want to delete this user? This action cannot be undone.",
+      confirmText: "Yes, Delete",
+      cancelText: "No",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       const res = await axios.delete(
         `${apiUrl.BASEURL}${apiUrl.DELETE_USER}${id}`,
@@ -289,14 +299,14 @@ function UserList() {
                   </span>
                   <span>{rowData.mobilenumber || "N/A"}</span>
                 </div>
-                <div className="mt-2" style={{ fontSize: "13px" }}>
+                {/* <div className="mt-2" style={{ fontSize: "13px" }}>
                   <span style={{ color: "black", fontWeight: "500" }}>
                     Role:
                   </span>{" "}
                   <span>
                     {rowData.company_profile[0]?.designation || "N/A"}
                   </span>
-                </div>
+                </div> */}
               </div>
               <div className="col-md-6">
                 <div className="mt-2" style={{ fontSize: "13px" }}>

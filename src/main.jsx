@@ -8,15 +8,18 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { GlobalProvider } from "./hooks/GlobalProvider";
 import { AdminDataProvider } from "./utilities/adminData";
+import { ConfirmProvider } from "./component/common/ConfirmProvider";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   // <Provider store={store}>
   <GlobalProvider>
     <AdminDataProvider>
-      <React.StrictMode>
-        <App />
-      </React.StrictMode>
+      <ConfirmProvider>
+        <React.StrictMode>
+          <App />
+        </React.StrictMode>
+      </ConfirmProvider>
     </AdminDataProvider>
   </GlobalProvider>,
   // </Provider>

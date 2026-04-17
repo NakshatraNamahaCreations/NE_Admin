@@ -9,8 +9,10 @@ import * as XLSX from "xlsx";
 import { FaCheckCircle } from "react-icons/fa";
 import { MdBlock } from "react-icons/md";
 import { MdEdit } from "react-icons/md";
+import { useConfirm } from "../../common/ConfirmProvider";
 
 function City() {
+  const confirm = useConfirm();
   const [stateName, setStateName] = useState("");
   const [stateId, setStateId] = useState("");
   const [cityName, setCityName] = useState("");
@@ -87,6 +89,14 @@ function City() {
   };
 
   const deleteCity = async (id) => {
+    const ok = await confirm({
+      title: "Delete City",
+      message: "Are you sure you want to delete this city? This action cannot be undone.",
+      confirmText: "Yes, Delete",
+      cancelText: "No",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       const res = await axios.delete(
         `${apiUrl.BASEURL}${apiUrl.DELETE_CITY}${id}`,
@@ -101,13 +111,21 @@ function City() {
   };
 
   const activeStatus = async (id) => {
+    const ok = await confirm({
+      title: "Activate City",
+      message: "Are you sure you want to change the status to Active?",
+      confirmText: "Yes, Activate",
+      cancelText: "No",
+      variant: "success",
+    });
+    if (!ok) return;
     try {
       const res = await axios.put(
         `${apiUrl.BASEURL}${apiUrl.CITY_ACTIVE_STATUS}${id}`,
       );
       if (res.status === 200) {
         fetchList();
-        alert(res.data.message || "State status updated!");
+        alert(res.data.message || "City status updated!");
       }
     } catch (error) {
       console.error("Error updating state status:", error);
@@ -115,13 +133,21 @@ function City() {
   };
 
   const inActiveStatus = async (id) => {
+    const ok = await confirm({
+      title: "Deactivate City",
+      message: "Are you sure you want to change the status to Inactive?",
+      confirmText: "Yes, Deactivate",
+      cancelText: "No",
+      variant: "warning",
+    });
+    if (!ok) return;
     try {
       const res = await axios.put(
         `${apiUrl.BASEURL}${apiUrl.CITY_INACTIVE_STATUS}${id}`,
       );
       if (res.status === 200) {
         fetchList();
-        alert(res.data.message || "State status updated!");
+        alert(res.data.message || "City status updated!");
       }
     } catch (error) {
       console.error("Error updating state status:", error);

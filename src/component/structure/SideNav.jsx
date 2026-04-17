@@ -26,9 +26,11 @@ import { HiBuildingLibrary } from "react-icons/hi2";
 import axios from "axios";
 import { apiUrl } from "../../api-services/apiContents";
 import { useAdminDataContext } from "../../utilities/adminData";
+import { useConfirm } from "../common/ConfirmProvider";
 
 function SideNav() {
   const { setAdminData } = useAdminDataContext();
+  const confirm = useConfirm();
   const user = JSON.parse(sessionStorage.getItem("user"));
   const location = useLocation();
   const { pathname } = location;
@@ -40,14 +42,27 @@ function SideNav() {
   };
 
   const logoutUser = async () => {
-    const teamRes = await axios.post(
-      `${apiUrl.BASEURL}${apiUrl.LOGOUT_TEAMPLAYER}${user?._id}`,
-    );
-    if (teamRes.status == 200) {
-      alert("Logout Success");
-      sessionStorage.removeItem("user");
-      setAdminData();
-      window.location.assign("/");
+    const ok = await confirm({
+      title: "Logout",
+      message: "Are you sure you want to logout?",
+      confirmText: "Yes, Logout",
+      cancelText: "No",
+      variant: "danger",
+    });
+    if (!ok) return;
+    try {
+      const teamRes = await axios.post(
+        `${apiUrl.BASEURL}${apiUrl.LOGOUT_TEAMPLAYER}${user?._id}`,
+      );
+      if (teamRes.status === 200) {
+        alert("Logout Success");
+        sessionStorage.removeItem("user");
+        setAdminData();
+        window.location.assign("/");
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+      alert("Failed to logout. Please try again.");
     }
   };
 

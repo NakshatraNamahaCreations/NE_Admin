@@ -11,8 +11,10 @@ import * as XLSX from "xlsx";
 import Switch from "react-switch";
 import { Badge } from "react-bootstrap";
 import { FaDownload } from "react-icons/fa6";
+import { useConfirm } from "../../common/ConfirmProvider";
 
 function AddSubService() {
+  const confirm = useConfirm();
   const [serviceName, setServiceName] = useState("");
   const [serviceSubCategory, setServiceSubCategory] = useState("");
   const [serviceId, setServiceId] = useState("");
@@ -82,15 +84,24 @@ function AddSubService() {
   };
 
   const toggleServiceStatus = async (id, currentStatus) => {
+    const next = !currentStatus;
+    const ok = await confirm({
+      title: `${next ? "Activate" : "Deactivate"} Subservice`,
+      message: `Are you sure you want to change the status to ${next ? "Active" : "Inactive"}?`,
+      confirmText: "Yes",
+      cancelText: "No",
+      variant: next ? "success" : "warning",
+    });
+    if (!ok) return;
     try {
       const res = await axios.put(
         `${apiUrl.BASEURL}${apiUrl.UPDATE_SUB_SERVICE_STATUS}${id}`,
         {
-          isActive: !currentStatus, // Toggle the current status
+          isActive: next,
         }
       );
       if (res.status === 200) {
-        fetchList(); // Refresh the service list
+        fetchList();
         alert(res.data.message || "Status updated!");
       }
     } catch (error) {
@@ -99,12 +110,19 @@ function AddSubService() {
   };
 
   const deleteService = async (id) => {
+    const ok = await confirm({
+      title: "Delete Subservice",
+      message: "Are you sure you want to delete this subservice? This action cannot be undone.",
+      confirmText: "Yes, Delete",
+      cancelText: "No",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       const res = await axios.delete(
         `${apiUrl.BASEURL}${apiUrl.DELETE_SUB_SERVICE}/${id}`
       );
       if (res.status === 200) {
-        // alert("Service Deleted");
         fetchList();
       }
     } catch (error) {

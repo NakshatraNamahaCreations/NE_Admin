@@ -6,16 +6,25 @@ import ReactPlayer from "react-player";
 import axios from "axios";
 import { Button, Modal } from "react-bootstrap";
 import Switch from "react-switch";
+import { useConfirm } from "../../../common/ConfirmProvider";
 
 function ProductDetails() {
   const location = useLocation();
   const product = location.state?.prooduct || null;
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [reason, setReason] = useState("");
   const [showModal, setShowModal] = useState(false);
-  console.log("prooduct", product);
 
   const makeProductApproval = async () => {
+    const ok = await confirm({
+      title: "Approve Product",
+      message: "Are you sure you want to approve this product?",
+      confirmText: "Yes, Approve",
+      cancelText: "No",
+      variant: "success",
+    });
+    if (!ok) return;
     try {
       const res = await axios.put(
         `${apiUrl.BASEURL}${apiUrl.PRODUCT_APPROVE}${product?._id}`,
@@ -34,6 +43,10 @@ function ProductDetails() {
   const openPop = () => setShowModal(true);
 
   const makeProductDisapproval = async () => {
+    if (!reason.trim()) {
+      alert("Please provide a reason for disapproval.");
+      return;
+    }
     try {
       const res = await axios.put(
         `${apiUrl.BASEURL}${apiUrl.PRODUCT_DISAPPROVE}${product?._id}`,
@@ -42,27 +55,33 @@ function ProductDetails() {
         },
       );
       if (res.status === 200) {
-        console.log(res.data);
-        alert("disapproved Successfully");
+        alert("Disapproved Successfully");
         navigate(-1);
-        // window.location.assign("/vendor/vendor-profile");
       }
     } catch (error) {
       console.error("Error:", error);
     }
   };
   const toggleServiceStatus = async (id, currentStatus) => {
+    const next = !currentStatus;
+    const ok = await confirm({
+      title: `${next ? "Activate" : "Deactivate"} Product`,
+      message: `Are you sure you want to change the status to ${next ? "Active" : "Inactive"}?`,
+      confirmText: "Yes",
+      cancelText: "No",
+      variant: next ? "success" : "warning",
+    });
+    if (!ok) return;
     try {
       const res = await axios.put(
         `${apiUrl.BASEURL}${apiUrl.PRODUCT_STATUS_CHANGE}${id}`,
         {
-          isActive: !currentStatus, // Toggle the current status
+          isActive: next,
         },
       );
       if (res.status === 200) {
         alert(`Product is ${currentStatus ? "Inactivated" : "Activated"}`);
         navigate(-1);
-        // fetchVendors(); // Refresh the service list
       }
     } catch (error) {
       console.error("Error updating service status:", error);
@@ -298,14 +317,26 @@ function ProductDetails() {
             className="py-2 px-3 mt-1"
             style={{ border: "1px solid #e4e4e4", borderRadius: "7px" }}
           >
-            {product?.Specifications.map((ele, index) => (
-              <div key={index}>
-                <div style={Styles.labelTitleSmall}>{ele.name} </div>
-                <div className="px-3 py-2" style={Styles.details}>
-                  {ele.value}
-                </div>
+            {Array.isArray(product?.Specifications) &&
+            product.Specifications.length > 0 ? (
+              product.Specifications.map((ele, index) => {
+                const name = ele?.name || ele?.selectItem || "";
+                const value = ele?.value || ele?.ItemSpecification || "";
+                if (!name && !value) return null;
+                return (
+                  <div key={index}>
+                    <div style={Styles.labelTitleSmall}>{name}</div>
+                    <div className="px-3 py-2" style={Styles.details}>
+                      {value || "NA"}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="px-3 py-2" style={Styles.details}>
+                No specifications added
               </div>
-            ))}
+            )}
           </div>
         </div>
         <div className="col-md-6">

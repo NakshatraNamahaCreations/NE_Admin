@@ -11,8 +11,10 @@ import * as XLSX from "xlsx";
 import { FaDownload } from "react-icons/fa6";
 import Switch from "react-switch";
 import { Badge } from "react-bootstrap";
+import { useConfirm } from "../../../common/ConfirmProvider";
 
 function Technicians() {
+  const confirm = useConfirm();
   const [serviceName, setServiceName] = useState("");
   const [searchServive, setSearchServive] = useState("");
   const [allTech, setAllTech] = useState([]);
@@ -127,6 +129,14 @@ function Technicians() {
     }
   };
   const deleteService = async (id) => {
+    const ok = await confirm({
+      title: "Delete Technician",
+      message: "Are you sure you want to delete this technician? This action cannot be undone.",
+      confirmText: "Yes, Delete",
+      cancelText: "No",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       const res = await axios.delete(
         `${apiUrl.BASEURL}${apiUrl.DELETE_TECHNICIAN}${id}`,
@@ -141,15 +151,24 @@ function Technicians() {
   };
 
   const toggleServiceStatus = async (id, currentStatus) => {
+    const next = !currentStatus;
+    const ok = await confirm({
+      title: `${next ? "Activate" : "Deactivate"} Technician`,
+      message: `Are you sure you want to change the status to ${next ? "Active" : "Inactive"}?`,
+      confirmText: "Yes",
+      cancelText: "No",
+      variant: next ? "success" : "warning",
+    });
+    if (!ok) return;
     try {
       const res = await axios.put(
         `${apiUrl.BASEURL}${apiUrl.UPDATE_SERVICE_STATUS}${id}`,
         {
-          isActive: !currentStatus, // Toggle the current status
+          isActive: next,
         },
       );
       if (res.status === 200) {
-        fetchList(); // Refresh the service list
+        fetchList();
         alert(res.data.message || "Service status updated!");
       }
     } catch (error) {

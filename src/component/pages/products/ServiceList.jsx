@@ -1,5 +1,5 @@
 import axios from "axios";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { apiUrl } from "../../../api-services/apiContents";
 import { FaCheck } from "react-icons/fa6";
 import { MdDelete, MdMotionPhotosOff } from "react-icons/md";
@@ -10,15 +10,26 @@ import Loader from "../../loader/Loader";
 import { FaDownload } from "react-icons/fa6";
 import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
+import { useConfirm } from "../../common/ConfirmProvider";
+
+const normalize = (v) =>
+  v === null || v === undefined ? "" : String(v).toLowerCase().trim();
 
 function ServiceList() {
+  const confirm = useConfirm();
   const Navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [serviceListData, setServiceListData] = useState([]);
   const [allServiceList, setAllServiceList] = useState([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusType, setStatusType] = useState("");
   const [serviceType, setServiceType] = useState("Select");
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search), 180);
+    return () => clearTimeout(id);
+  }, [search]);
 
   const fetchList = async () => {
     setIsLoading(true);
@@ -61,38 +72,47 @@ function ServiceList() {
     fetchData();
   }, []);
 
-  const searchResults =
-    allServiceList.length > 0
-      ? allServiceList
-          .filter((prod) => {
-            if (search) {
-              const lowerSearch = search.toLowerCase();
-              return (
-                prod.service_name.toLowerCase().includes(lowerSearch) ||
-                prod.vendor_name.toLowerCase().includes(lowerSearch) ||
-                prod.shop_name.toLowerCase().includes(lowerSearch)
-              );
-            }
-            return true;
-          })
-          .filter((item) => {
-            if (statusType === "") return true;
-            return item.approval_status === statusType;
-          })
-          .filter((ele) => {
-            if (serviceType === "Select") return true;
-            return ele.service_category === serviceType;
-          })
-      : [];
+  const searchResults = useMemo(() => {
+    if (!allServiceList.length) return [];
+    const term = normalize(debouncedSearch);
+    const serviceFilter = normalize(serviceType === "Select" ? "" : serviceType);
+    const statusFilter = normalize(statusType);
+    const terms = term.split(/\s+/).filter(Boolean);
+
+    return allServiceList.filter((item) => {
+      if (serviceFilter && normalize(item.service_category) !== serviceFilter)
+        return false;
+      if (statusFilter && normalize(item.approval_status) !== statusFilter)
+        return false;
+      if (!terms.length) return true;
+      const haystack = [
+        item.service_name,
+        item.vendor_name,
+        item.shop_name,
+        item.service_category,
+        item.approval_status,
+      ]
+        .map(normalize)
+        .join(" ");
+      return terms.every((t) => haystack.includes(t));
+    });
+  }, [allServiceList, debouncedSearch, statusType, serviceType]);
 
   const deleteItem = async (id) => {
+    const ok = await confirm({
+      title: "Delete Service",
+      message: "Are you sure you want to delete this service? This action cannot be undone.",
+      confirmText: "Yes, Delete",
+      cancelText: "No",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       const res = await axios.delete(
         `${apiUrl.BASEURL}${apiUrl.DELETE_VENDOR_SERVICE}${id}`,
       );
       if (res.status === 200) {
         alert("Service Deleted");
-        // fetchList();
         window.location.reload();
       }
     } catch (error) {

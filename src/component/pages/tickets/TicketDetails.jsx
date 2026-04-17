@@ -12,11 +12,12 @@ function TicketDetails() {
   const location = useLocation();
   const navigate = useNavigate();
   const ticketDetails = location.state?.ticketDetails || null;
-  console.log("ticketDetails", ticketDetails);
   const [statusType, setStatusType] = useState(ticketDetails.ticket_status);
   const [remark, setRemark] = useState(ticketDetails.remark);
   const [isLoading, setIsLoading] = useState("");
   const [vendorData, setVendorData] = useState([]);
+
+  const isClosed = ticketDetails?.ticket_status === "Closed";
 
   useEffect(() => {
     const fetchData = async () => {
@@ -40,6 +41,12 @@ function TicketDetails() {
   console.log("vendorData", vendorData);
 
   const changeStatus = async () => {
+    if (isClosed) {
+      alert(
+        "This ticket is already closed and cannot be modified further.",
+      );
+      return;
+    }
     if (statusType === "" || !remark) {
       alert("Please add status and remark");
     } else {
@@ -120,10 +127,13 @@ function TicketDetails() {
           <select
             className="mt-1"
             onChange={(e) => setStatusType(e.target.value)}
+            disabled={isClosed}
             style={{
               borderRadius: "5px",
               border: "1px solid #ebedf2",
               padding: "5px",
+              backgroundColor: isClosed ? "#f1f3f5" : "#fff",
+              cursor: isClosed ? "not-allowed" : "pointer",
             }}
             value={statusType}
           >
@@ -134,6 +144,18 @@ function TicketDetails() {
           </select>
           {ticketDetails.update_date && (
             <div>Update At: {ticketDetails.update_date}</div>
+          )}
+          {isClosed && (
+            <div
+              style={{
+                marginTop: 6,
+                fontSize: 12,
+                color: "#b45309",
+                fontWeight: 500,
+              }}
+            >
+              This ticket is Closed and can no longer be modified.
+            </div>
           )}
         </>
       ),
@@ -146,11 +168,15 @@ function TicketDetails() {
             className="mt-2"
             onChange={(e) => setRemark(e.target.value)}
             value={remark}
+            disabled={isClosed}
+            readOnly={isClosed}
             style={{
               width: "300px",
               height: "96px",
               borderRadius: "5px",
               border: "1px solid #ebedf2",
+              backgroundColor: isClosed ? "#f1f3f5" : "#fff",
+              cursor: isClosed ? "not-allowed" : "text",
             }}
           />
         </>
@@ -219,14 +245,21 @@ function TicketDetails() {
                 <Button
                   style={{
                     width: "150px",
-                    backgroundColor: "#177dff",
+                    backgroundColor: isClosed ? "#9bb8d9" : "#177dff",
                     border: 0,
                     color: "white",
                     fontWeight: "600",
                     fontSize: "14px",
+                    cursor: isClosed ? "not-allowed" : "pointer",
                   }}
                   className="ms-2"
                   onClick={changeStatus}
+                  disabled={isClosed}
+                  title={
+                    isClosed
+                      ? "Closed tickets cannot be modified"
+                      : "Update ticket status"
+                  }
                 >
                   Update Ticket
                 </Button>{" "}

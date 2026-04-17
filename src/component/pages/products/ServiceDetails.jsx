@@ -6,16 +6,25 @@ import axios from "axios";
 import { Button, Modal } from "react-bootstrap";
 import Switch from "react-switch";
 import { apiUrl } from "../../../api-services/apiContents";
+import { useConfirm } from "../../common/ConfirmProvider";
 
 function ServiceDetails() {
   const location = useLocation();
   const service = location.state?.service || null;
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [reason, setReason] = useState("");
   const [showModal, setShowModal] = useState(false);
-  console.log("SERVICE", service);
 
   const makeServiceApproval = async () => {
+    const ok = await confirm({
+      title: "Approve Service",
+      message: "Are you sure you want to approve this service?",
+      confirmText: "Yes, Approve",
+      cancelText: "No",
+      variant: "success",
+    });
+    if (!ok) return;
     try {
       const res = await axios.put(
         `${apiUrl.BASEURL}${apiUrl.SERVICE_APPROVE}${service?._id}`,
@@ -34,6 +43,10 @@ function ServiceDetails() {
   const openPop = () => setShowModal(true);
 
   const makeServiceDisapproval = async () => {
+    if (!reason.trim()) {
+      alert("Please provide a reason for disapproval.");
+      return;
+    }
     try {
       const res = await axios.put(
         `${apiUrl.BASEURL}${apiUrl.SERVICE_DISAPPROVE}${service?._id}`,
@@ -42,27 +55,33 @@ function ServiceDetails() {
         },
       );
       if (res.status === 200) {
-        console.log(res.data);
         alert("Disapproved Successfully");
         navigate(-1);
-        // window.location.assign("/vendor/vendor-profile");
       }
     } catch (error) {
       console.error("Error:", error);
     }
   };
   const toggleServiceStatus = async (id, currentStatus) => {
+    const next = !currentStatus;
+    const ok = await confirm({
+      title: `${next ? "Activate" : "Deactivate"} Service`,
+      message: `Are you sure you want to change the status to ${next ? "Active" : "Inactive"}?`,
+      confirmText: "Yes",
+      cancelText: "No",
+      variant: next ? "success" : "warning",
+    });
+    if (!ok) return;
     try {
       const res = await axios.put(
         `${apiUrl.BASEURL}${apiUrl.PRODUCT_STATUS_CHANGE}${id}`,
         {
-          isActive: !currentStatus, // Toggle the current status
+          isActive: next,
         },
       );
       if (res.status === 200) {
         alert(`Product is ${currentStatus ? "Inactivated" : "Activated"}`);
         navigate(-1);
-        // fetchVendors(); // Refresh the service list
       }
     } catch (error) {
       console.error("Error updating service status:", error);

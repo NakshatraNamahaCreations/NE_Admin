@@ -3,8 +3,10 @@ import axios from "axios";
 import { apiUrl } from "../../../../api-services/apiContents";
 import Loader from "../../../loader/Loader";
 import Header from "../../../structure/Header";
+import { useConfirm } from "../../../common/ConfirmProvider";
 
 function PayoutConfig() {
+  const confirm = useConfirm();
   const [profileData, setProfileData] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [gst, setGST] = useState("");
@@ -109,6 +111,14 @@ function PayoutConfig() {
   // };
 
   const deleteService = async (id) => {
+    const ok = await confirm({
+      title: "Delete Social Link",
+      message: "Are you sure you want to delete this link? This action cannot be undone.",
+      confirmText: "Yes, Delete",
+      cancelText: "No",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       const res = await axios.delete(
         `${apiUrl.BASEURL}/company-profile/link/${profileData._id}/social-media/${id}`,
