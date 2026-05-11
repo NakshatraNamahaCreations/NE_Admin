@@ -1,44 +1,38 @@
 import React, { useEffect, useState } from "react";
 import DataTable from "react-data-table-component";
-// import { FaEye } from "react-icons/fa";
-// import { RxSlash } from "react-icons/rx";
 import { MdDelete } from "react-icons/md";
 import { apiUrl } from "../../../api-services/apiContents";
 import axios from "axios";
-import { postData } from "../../../api-services/apiHelper";
 import Loader from "../../loader/Loader";
 import * as XLSX from "xlsx";
+import { FaDownload } from "react-icons/fa6";
 import Switch from "react-switch";
 import { Badge } from "react-bootstrap";
-import { FaDownload } from "react-icons/fa6";
 import { useConfirm } from "../../common/ConfirmProvider";
 
-function AddSubService() {
+function AddService() {
   const confirm = useConfirm();
   const [serviceName, setServiceName] = useState("");
-  const [serviceSubCategory, setServiceSubCategory] = useState("");
-  const [serviceId, setServiceId] = useState("");
+  const [searchServive, setSearchServive] = useState("");
   const [serviceListData, setServiceListData] = useState([]);
-  const [subServiceListData, setSubServiceListData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [file, setFile] = useState(null);
-  const [searchServive, setSearchServive] = useState("");
   const [statusType, setStatusType] = useState("");
+  const [serviceImage, setServiceImage] = useState(null);
+
+  const handleFileChange = (e) => {
+    const selected = e.target.files[0];
+    if (selected) {
+      setServiceImage(selected);
+    }
+  };
 
   const fetchList = async () => {
     setIsLoading(true);
     try {
-      const serviceRes = await axios.get(
-        `${apiUrl.BASEURL}${apiUrl.GET_ACTIVE_SERVICE}`,
-      );
-      if (serviceRes.status === 200) {
-        setServiceListData(serviceRes.data.data);
-      }
-      const subServiceRes = await axios.get(
-        `${apiUrl.BASEURL}${apiUrl.GET_ALL_SUB_SERVICE}`,
-      );
-      if (subServiceRes.status === 200) {
-        setSubServiceListData(subServiceRes.data.data);
+      const res = await axios.get(`${apiUrl.BASEURL}${apiUrl.GET_ALL_SERVICE}`);
+      if (res.status === 200) {
+        setServiceListData(res.data.data);
       }
     } catch (error) {
       console.error("Failed to fetch list:", error);
@@ -51,68 +45,42 @@ function AddSubService() {
     fetchList();
   }, []);
 
-  const handleService = (e) => {
-    let data = e.target.value;
-    let serviceList = serviceListData.find((ele) => ele._id === data);
-    setServiceName(serviceList.service_name);
-    setServiceId(serviceList._id);
-  };
-
-  const addSubService = async () => {
-    if (!serviceName || !serviceSubCategory) {
-      alert("Please fill all fields");
-    } else {
-      try {
-        const data = {
-          service_name: serviceName,
-          service_id: serviceId,
-          sub_service_name: serviceSubCategory,
-        };
-        const res = await postData(`${apiUrl.ADD_SUB_SERVICE}`, data);
-        if (res) {
-          alert("Added");
-          // window.location.reload(); //add later
-          setServiceName("");
-          setServiceId("");
-          setServiceSubCategory("");
-          fetchList();
-        }
-      } catch (error) {
-        console.error("Error:", error);
-      }
+  const addService = async () => {
+    if (!serviceName || !serviceImage) {
+      alert("Service Name and Service Image should not be empty");
+      return;
     }
-  };
+    const formData = new FormData();
+    formData.append("service_image", serviceImage);
+    formData.append("service_name", serviceName);
 
-  const toggleServiceStatus = async (id, currentStatus) => {
-    const next = !currentStatus;
-    const ok = await confirm({
-      title: `${next ? "Activate" : "Deactivate"} Subservice`,
-      message: `Are you sure you want to change the status to ${next ? "Active" : "Inactive"}?`,
-      confirmText: "Yes",
-      cancelText: "No",
-      variant: next ? "success" : "warning",
-    });
-    if (!ok) return;
     try {
-      const res = await axios.put(
-        `${apiUrl.BASEURL}${apiUrl.UPDATE_SUB_SERVICE_STATUS}${id}`,
+      const res = await axios.post(
+        `${apiUrl.BASEURL}${apiUrl.ADD_SERVICE}`,
+        formData,
         {
-          isActive: next,
+          headers: { "Content-Type": "multipart/form-data" },
         },
       );
-      if (res.status === 200) {
+      if (res.status === 200 || res.status === 201) {
+        alert("Service Added Successfully");
+        setServiceName("");
+        setServiceImage(null);
         fetchList();
-        alert(res.data.message || "Status updated!");
       }
     } catch (error) {
-      console.error("Error updating the status:", error);
+      console.error("Error:", error);
+      alert(
+        error?.response?.data?.message || "Failed to add service. Try again.",
+      );
     }
   };
 
   const deleteService = async (id) => {
     const ok = await confirm({
-      title: "Delete Subservice",
-      message: "Are you sure you want to delete this subservice? This action cannot be undone.",
+      title: "Delete Service",
+      message:
+        "Are you sure you want to delete this service? This action cannot be undone.",
       confirmText: "Yes, Delete",
       cancelText: "No",
       variant: "danger",
@@ -120,7 +88,7 @@ function AddSubService() {
     if (!ok) return;
     try {
       const res = await axios.delete(
-        `${apiUrl.BASEURL}${apiUrl.DELETE_SUB_SERVICE}/${id}`,
+        `${apiUrl.BASEURL}${apiUrl.DELETE_SERVICE}/${id}`,
       );
       if (res.status === 200) {
         fetchList();
@@ -130,72 +98,99 @@ function AddSubService() {
     }
   };
 
-  // const downloadExcel = () => {
-  //   const worksheet = XLSX.utils.json_to_sheet([
-  //     { Service_Name: "Service Name" },
-  //   ]);
-  //   const workbook = XLSX.utils.book_new();
-  //   XLSX.utils.book_append_sheet(workbook, worksheet, "Service Name");
-  //   XLSX.writeFile(workbook, "services-template.xlsx");
-  // };
+  const toggleServiceStatus = async (id, currentStatus) => {
+    const next = !currentStatus;
+    const ok = await confirm({
+      title: `${next ? "Activate" : "Deactivate"} Service`,
+      message: `Are you sure you want to change the status to ${
+        next ? "Active" : "Inactive"
+      }?`,
+      confirmText: "Yes",
+      cancelText: "No",
+      variant: next ? "success" : "warning",
+    });
+    if (!ok) return;
+    try {
+      const res = await axios.put(
+        `${apiUrl.BASEURL}${apiUrl.UPDATE_SERVICE_STATUS}${id}`,
+        {
+          isActive: next,
+        },
+      );
+      if (res.status === 200) {
+        fetchList();
+        alert(res.data.message || "Service status updated!");
+      }
+    } catch (error) {
+      console.error("Error updating service status:", error);
+    }
+  };
 
-  // const uploadFile = (event) => {
-  //   const uploadedFile = event.target.files[0];
-  //   setFile(uploadedFile);
-  // };
+  const downloadExcel = () => {
+    const worksheet = XLSX.utils.json_to_sheet([
+      { Service_Name: "Service Name" },
+    ]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Service Name");
+    XLSX.writeFile(workbook, "services-template.xlsx");
+  };
 
-  // const addExcel = async () => {
-  //   if (file === "") {
-  //     alert("Please select a file");
-  //   } else {
-  //     if (file) {
-  //       const reader = new FileReader();
-  //       reader.onload = (e) => {
-  //         const data = new Uint8Array(e.target.result);
-  //         const workbook = XLSX.read(data, { type: "array" });
-  //         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-  //         const jsonData = XLSX.utils.sheet_to_json(worksheet);
-  //         console.log("Raw Excel Data:", jsonData);
-  //         // Ensure we map the Excel column "Service Name" to the backend expected "service_name"
-  //         const jsonData1 = jsonData.map((item) => ({
-  //           service_name: item["Service_Name"],
-  //         }));
+  const uploadFile = (event) => {
+    const uploadedFile = event.target.files[0];
+    setFile(uploadedFile);
+  };
 
-  //         console.log("Mapped Data:", jsonData1); // Check if data is properly mapped
+  const addExcel = async () => {
+    if (!file) {
+      alert("Please upload a file first.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      const jsonData1 = jsonData
+        .map((item) => ({ service_name: item["Service_Name"] }))
+        .filter((item) => item.service_name);
 
-  //         try {
-  //           axios.post(
-  //             `${apiUrl.BASEURL}${apiUrl.ADD_SERVICE_VIA_EXCEL}`,
-  //             jsonData1
-  //           );
-  //           alert("Service Added!!!");
-  //           window.location.reload();
-  //         } catch (error) {
-  //           console.error("Error sending data to backend:", error);
-  //         }
-  //       };
-  //       reader.readAsArrayBuffer(file);
-  //     } else {
-  //       alert("Please upload a file first.");
-  //     }
-  //   }
-  // };
+      try {
+        await axios.post(
+          `${apiUrl.BASEURL}${apiUrl.ADD_SERVICE_VIA_EXCEL}`,
+          jsonData1,
+        );
+        alert("Services Added!");
+        setFile(null);
+        fetchList();
+      } catch (error) {
+        console.error("Error sending data to backend:", error);
+        alert(
+          error?.response?.data?.message ||
+            "Failed to import services via excel.",
+        );
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
 
   const columns = [
-    // {
-    //   name: "Sl.No",
-    //   selector: (row, index) => index + 1,
-    // },
-
     {
       name: "Service Name",
       selector: (row) => row.service_name,
       sortable: true,
     },
     {
-      name: "Sub category",
-      selector: (row) => row.sub_service_name,
-      sortable: true,
+      name: "Image",
+      selector: (row) => (
+        <div style={{ padding: "5px" }}>
+          <img
+            src={row.service_image}
+            alt={row.service_name}
+            style={{ width: "80px", height: "80px", borderRadius: "10px" }}
+          />
+        </div>
+      ),
     },
     {
       name: "Status",
@@ -208,67 +203,58 @@ function AddSubService() {
     {
       name: "Action",
       selector: (row) => (
-        <>
+        <div style={{ display: "flex" }}>
+          <Switch
+            onChange={() => toggleServiceStatus(row._id, row.isActive)}
+            checked={row.isActive}
+            onColor="#080"
+            offHandleColor="#ddd"
+            onHandleColor="#ddd"
+            offColor="#888"
+            handleDiameter={15}
+            uncheckedIcon={false}
+            checkedIcon={false}
+            height={15}
+            width={25}
+          />{" "}
+          /{" "}
           <div
-            style={{
-              display: "flex",
-            }}
+            style={{ cursor: "pointer" }}
+            title="Delete"
+            onClick={() => deleteService(row._id)}
           >
-            <Switch
-              onChange={() => toggleServiceStatus(row._id, row.isActive)}
-              checked={row.isActive}
-              onColor="#080"
-              offHandleColor="#ddd"
-              onHandleColor="#ddd"
-              offColor="#888"
-              handleDiameter={15}
-              uncheckedIcon={false}
-              checkedIcon={false}
-              height={15}
-              width={25}
-            />{" "}
-            /{" "}
-            <div
-              style={{ cursor: "pointer" }}
-              title="Delete"
-              onClick={() => deleteService(row._id)}
-            >
-              <MdDelete size={20} color="#E91E63" />
-            </div>
+            <MdDelete size={20} color="#E91E63" />
           </div>
-        </>
+        </div>
       ),
-      // sortable: true,
     },
   ];
 
-  const filteredServiceListData = subServiceListData
+  const filteredServiceListData = serviceListData
     .filter((service) => {
       if (searchServive) {
-        return service.sub_service_name
+        return service.service_name
           .toLowerCase()
           .includes(searchServive.toLowerCase());
       }
       return true;
     })
     .filter((item) => {
-      if (statusType === "") {
-        return true;
-      }
+      if (statusType === "") return true;
       return item.isActive === (statusType === "true");
     });
 
   const downloadDataset = () => {
     const dataToDownload = filteredServiceListData.map((item) => ({
       service_name: item.service_name,
-      subcategory_name: item.sub_service_name,
+      service_image: item.service_image,
       status: item.isActive ? "Active" : "Inactive",
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(dataToDownload);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Subcategory-list");
-    XLSX.writeFile(workbook, "subcategory-list.xlsx");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Service List");
+    XLSX.writeFile(workbook, "service-list.xlsx");
   };
 
   return (
@@ -281,53 +267,39 @@ function AddSubService() {
             className="border-top-for-all-border"
             style={{
               backgroundColor: "white",
-
-              // rgb(95 95 95)
               borderRadius: "5px",
             }}
           >
             <div className="p-2">
               <div>
                 <h6 className="mt-3" style={styles.header}>
-                  Select Service:
+                  Service Name:
                 </h6>
-
-                <select
-                  style={{ padding: "4px 7px", fontSize: "14px" }}
-                  onChange={handleService}
-                >
-                  <option value="">---Select Service---</option>
-                  {serviceListData.map((ele) => (
-                    <option value={ele._id}>{ele.service_name}</option>
-                  ))}
-                </select>
+                <input
+                  type="text"
+                  value={serviceName}
+                  placeholder="e.g. Catering Service"
+                  onChange={(e) => setServiceName(e.target.value)}
+                  style={{ fontSize: "14px", padding: "4px 7px" }}
+                />
               </div>
               <div>
                 <h6 className="mt-3" style={styles.header}>
-                  Enter Subcategory
+                  Service Image:
                 </h6>
-
                 <input
-                  type="text"
-                  value={serviceSubCategory}
-                  placeholder="e.g. Catering Service"
-                  onChange={(e) => setServiceSubCategory(e.target.value)}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
                   style={{ fontSize: "14px", padding: "4px 7px" }}
                 />
               </div>
               <div className="mt-3 mb-2">
-                <button
-                  onClick={addSubService}
-                  style={styles.buttonForEveything}
-                >
+                <button onClick={addService} style={styles.buttonForEveything}>
                   Add Service
                 </button>
               </div>
-              {/* <div
-                style={{
-                  borderBottom: "1px solid #f4f4f4",
-                }}
-              ></div>
+              <div style={{ borderBottom: "1px solid #f4f4f4" }}></div>
               <p className="mt-1" style={{ fontSize: "12px", color: "blue" }}>
                 <b>*Add multiple services through excel</b>
               </p>
@@ -347,7 +319,7 @@ function AddSubService() {
                 <button onClick={addExcel} style={styles.buttonForEveything}>
                   Add
                 </button>
-              </div> */}
+              </div>
             </div>
           </div>
         </div>
@@ -370,10 +342,9 @@ function AddSubService() {
                   }}
                 >
                   <div>
-                    <h3 style={styles.itemsHead}>Subservice List</h3>
+                    <h3 style={styles.itemsHead}>Service List</h3>
                   </div>
                   <div style={{ justifyContent: "flex-end" }}>
-                    {/* <b style={{ fontSize: "12px" }}>Search: </b> */}
                     <input
                       className="ms-1"
                       placeholder="Search service"
@@ -411,7 +382,6 @@ function AddSubService() {
                     columns={columns}
                     data={filteredServiceListData}
                     pagination
-                    //   defaultSortFieldId={1}
                   />
                 </div>
               </div>
@@ -449,4 +419,4 @@ const styles = {
   },
 };
 
-export default AddSubService;
+export default AddService;

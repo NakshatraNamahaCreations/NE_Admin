@@ -10,6 +10,13 @@ const NAME_REGEX = /^[A-Za-z][A-Za-z.\s'-]{1,49}$/;
 const PHONE_REGEX = /^[6-9]\d{9}$/;
 const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
+const sanitizeName = (raw) => {
+  let val = (raw || "").replace(/[^A-Za-z.\s'-]/g, "");
+  val = val.replace(/^[^A-Za-z]+/, "");
+  val = val.replace(/\s{2,}/g, " ");
+  return val.slice(0, 50);
+};
+
 const validateName = (v) => {
   const val = (v || "").trim();
   if (!val) return "Name is required";
@@ -162,7 +169,7 @@ function EditTeam() {
 
   const handleNameChange = useCallback(
     (e) => {
-      const value = e.target.value.replace(/^\s+/, "");
+      const value = sanitizeName(e.target.value);
       setName(value);
       if (touched.name) setErrors((p) => ({ ...p, name: validateName(value) }));
     },
@@ -330,7 +337,7 @@ function EditTeam() {
           res.data.message || "Team member updated successfully",
           "success",
         );
-        setTimeout(() => navigate("/team/team-list"), 900);
+        setTimeout(() => navigate("/team/team-list"), 2000);
       } else {
         showToast("Failed to update team member", "danger");
         setSubmitting(false);
@@ -1041,7 +1048,7 @@ function EditTeam() {
       <ToastContainer
         position="top-end"
         className="p-3"
-        style={{ zIndex: 9999 }}
+        style={{ position: "fixed", top: 0, right: 0, zIndex: 9999 }}
       >
         <Toast
           onClose={() => setToast((t) => ({ ...t, show: false }))}

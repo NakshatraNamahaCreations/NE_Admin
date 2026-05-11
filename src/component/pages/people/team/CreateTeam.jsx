@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "../../../../styles/teammember.css";
 import { Button, Spinner, Toast, ToastContainer } from "react-bootstrap";
 import { postData } from "../../../../api-services/apiHelper";
@@ -7,6 +8,13 @@ import { apiUrl } from "../../../../api-services/apiContents";
 const NAME_REGEX = /^[A-Za-z][A-Za-z.\s'-]{1,49}$/;
 const PHONE_REGEX = /^[6-9]\d{9}$/;
 const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
+const sanitizeName = (raw) => {
+  let val = (raw || "").replace(/[^A-Za-z.\s'-]/g, "");
+  val = val.replace(/^[^A-Za-z]+/, "");
+  val = val.replace(/\s{2,}/g, " ");
+  return val.slice(0, 50);
+};
 
 const validateName = (v) => {
   const val = (v || "").trim();
@@ -44,6 +52,7 @@ const errorTextStyle = {
 const invalidBorder = { borderColor: "#dc3545" };
 
 function CreateTeam() {
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [emailId, setEmailId] = useState("");
@@ -144,7 +153,7 @@ function CreateTeam() {
 
   const handleNameChange = useCallback(
     (e) => {
-      const value = e.target.value.replace(/^\s+/, "");
+      const value = sanitizeName(e.target.value);
       setName(value);
       if (touched.name) setErrors((p) => ({ ...p, name: validateName(value) }));
     },
@@ -295,7 +304,7 @@ function CreateTeam() {
       const res = await postData(apiUrl.CREATE_TEAM, data);
       if (res) {
         showToast(res.message || "Team member added successfully", "success");
-        setTimeout(() => window.location.assign("/team/team-list"), 900);
+        setTimeout(() => navigate("/team/team-list"), 2000);
       } else {
         showToast("Failed to create team member", "danger");
         setSubmitting(false);
@@ -1050,7 +1059,7 @@ function CreateTeam() {
         <Button
           className="px-5 py-2"
           variant="outline-info"
-          onClick={() => window.location.assign("/team/team-list")}
+          onClick={() => navigate("/team/team-list")}
           disabled={submitting}
         >
           <i className="fa-solid fa-arrow-left-long"></i> &nbsp; Back
@@ -1078,7 +1087,7 @@ function CreateTeam() {
       <ToastContainer
         position="top-end"
         className="p-3"
-        style={{ zIndex: 9999 }}
+        style={{ position: "fixed", top: 0, right: 0, zIndex: 9999 }}
       >
         <Toast
           onClose={() => setToast((t) => ({ ...t, show: false }))}

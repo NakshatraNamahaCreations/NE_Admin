@@ -29,13 +29,13 @@ function AddSubService() {
     setIsLoading(true);
     try {
       const serviceRes = await axios.get(
-        `${apiUrl.BASEURL}${apiUrl.GET_ACTIVE_SERVICE}`
+        `${apiUrl.BASEURL}${apiUrl.GET_ACTIVE_SERVICE}`,
       );
       if (serviceRes.status === 200) {
         setServiceListData(serviceRes.data.data);
       }
       const subServiceRes = await axios.get(
-        `${apiUrl.BASEURL}${apiUrl.GET_ALL_SUB_SERVICE}`
+        `${apiUrl.BASEURL}${apiUrl.GET_ALL_SUB_SERVICE}`,
       );
       if (subServiceRes.status === 200) {
         setSubServiceListData(subServiceRes.data.data);
@@ -98,7 +98,7 @@ function AddSubService() {
         `${apiUrl.BASEURL}${apiUrl.UPDATE_SUB_SERVICE_STATUS}${id}`,
         {
           isActive: next,
-        }
+        },
       );
       if (res.status === 200) {
         fetchList();
@@ -112,7 +112,8 @@ function AddSubService() {
   const deleteService = async (id) => {
     const ok = await confirm({
       title: "Delete Subservice",
-      message: "Are you sure you want to delete this subservice? This action cannot be undone.",
+      message:
+        "Are you sure you want to delete this subservice? This action cannot be undone.",
       confirmText: "Yes, Delete",
       cancelText: "No",
       variant: "danger",
@@ -120,7 +121,7 @@ function AddSubService() {
     if (!ok) return;
     try {
       const res = await axios.delete(
-        `${apiUrl.BASEURL}${apiUrl.DELETE_SUB_SERVICE}/${id}`
+        `${apiUrl.BASEURL}${apiUrl.DELETE_SUB_SERVICE}/${id}`,
       );
       if (res.status === 200) {
         fetchList();
@@ -320,7 +321,7 @@ function AddSubService() {
                   onClick={addSubService}
                   style={styles.buttonForEveything}
                 >
-                  Add Service
+                  Add Sub Service
                 </button>
               </div>
               {/* <div
