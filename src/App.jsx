@@ -55,12 +55,20 @@ import ServiceList from "./component/pages/products/ServiceList";
 import ServiceDetails from "./component/pages/products/ServiceDetails";
 import VendorInvoice from "./component/pages/bookings/user/VendorInvoice";
 import ViewInvoice from "./component/pages/bookings/user/ViewInvoice";
+import Loader from "./component/loader/Loader";
+import { useApiLoading } from "./api-services/loadingState";
 
 // https://github.com/NakshatraNamahaCreations/eventboxadmin.git
+
+function GlobalApiLoader() {
+  const activeRequests = useApiLoading();
+  return activeRequests > 0 ? <Loader /> : null;
+}
 
 function App() {
   return (
     <BrowserRouter>
+      <GlobalApiLoader />
       <Routes>
         <Route path="/" element={<Login />} />
         <Route

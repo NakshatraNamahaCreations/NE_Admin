@@ -1,5 +1,6 @@
 import axios from "axios";
 import { apiUrl } from "./apiContents";
+import { attachLoadingInterceptors } from "./loadingState";
 
 const apiClient = axios.create({
   baseURL: apiUrl.BASEURL,
@@ -7,6 +8,8 @@ const apiClient = axios.create({
     "Content-Type": "application/json",
   },
 });
+
+attachLoadingInterceptors(apiClient);
 
 // GET method
 const get = async (endpoint, params = {}) => {
