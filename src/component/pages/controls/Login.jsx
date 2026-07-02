@@ -52,14 +52,6 @@ function Login() {
     }
   }, [mobileNumber, password, loading, setAdminData]);
 
-  const handleEnterToLogin = (e) => {
-    console.log("keydown:", e.key);
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleLogin();
-    }
-  };
-
   return (
     <div className="row me-0" style={{ marginTop: "80px" }}>
       <div className="col-md-4"></div>
