@@ -7,6 +7,7 @@ import { Button, Modal } from "react-bootstrap";
 import Switch from "react-switch";
 import { apiUrl } from "../../../api-services/apiContents";
 import { useConfirm } from "../../common/ConfirmProvider";
+import { FaDownload, FaEye } from "react-icons/fa";
 
 function ServiceDetails() {
   const location = useLocation();
@@ -15,6 +16,27 @@ function ServiceDetails() {
   const confirm = useConfirm();
   const [reason, setReason] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
+
+  const downloadImage = async (imageUrl, index) => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const extension = blob.type.split("/")[1] || "jpg";
+      link.download = `${service?.service_name || "service"}-image-${index + 1}.${extension}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to download image:", error);
+      // Fallback: open the image in a new tab
+      window.open(imageUrl, "_blank");
+    }
+  };
 
   const makeServiceApproval = async () => {
     const ok = await confirm({
@@ -181,15 +203,72 @@ function ServiceDetails() {
           >
             <div className="row">
               {service?.additional_images &&
+              service?.additional_images.length > 0 ? (
                 service?.additional_images.map((image, index) => (
-                  <div key={index} className="col-md-4 mb-2">
-                    <img
-                      src={image}
-                      alt="product image"
-                      style={{ width: "80%", height: "100px" }}
-                    />
+                  <div key={index} className="col-md-4 mb-3">
+                    <div
+                      style={{
+                        position: "relative",
+                        borderRadius: "7px",
+                        overflow: "hidden",
+                        border: "1px solid #e4e4e4",
+                      }}
+                    >
+                      <img
+                        src={image}
+                        alt={`service image ${index + 1}`}
+                        style={{
+                          width: "100%",
+                          height: "100px",
+                          objectFit: "cover",
+                          cursor: "pointer",
+                        }}
+                        onClick={() => setPreviewImage(image)}
+                      />
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "4px",
+                          right: "4px",
+                          display: "flex",
+                          gap: "4px",
+                        }}
+                      >
+                        <div
+                          title="View"
+                          onClick={() => setPreviewImage(image)}
+                          style={{
+                            backgroundColor: "rgba(47, 78, 158, 0.9)",
+                            padding: "5px",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                            display: "flex",
+                          }}
+                        >
+                          <FaEye size={13} color="#ffffff" />
+                        </div>
+                        <div
+                          title="Download"
+                          onClick={() => downloadImage(image, index)}
+                          style={{
+                            backgroundColor: "rgba(25, 135, 84, 0.9)",
+                            padding: "5px",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                            display: "flex",
+                          }}
+                        >
+                          <FaDownload size={13} color="#ffffff" />
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                ))}
+                ))
+              ) : (
+                <div className="px-3 py-2" style={Styles.labelTitleSmall}>
+                  No images uploaded.
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -328,6 +407,47 @@ function ServiceDetails() {
             </Button>
           </div>
         </Modal.Body>
+      </Modal>
+
+      <Modal
+        size="lg"
+        centered
+        show={!!previewImage}
+        onHide={() => setPreviewImage(null)}
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Service Image</Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ textAlign: "center" }}>
+          {previewImage && (
+            <img
+              src={previewImage}
+              alt="service preview"
+              style={{
+                maxWidth: "100%",
+                maxHeight: "70vh",
+                objectFit: "contain",
+              }}
+            />
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="success"
+            onClick={() =>
+              downloadImage(
+                previewImage,
+                service?.additional_images?.indexOf(previewImage) ?? 0,
+              )
+            }
+          >
+            <FaDownload className="me-2" size={13} />
+            Download
+          </Button>
+          <Button variant="secondary" onClick={() => setPreviewImage(null)}>
+            Close
+          </Button>
+        </Modal.Footer>
       </Modal>
     </div>
   );

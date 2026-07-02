@@ -22,7 +22,9 @@ function RentalProduct() {
   const Navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusType, setStatusType] = useState("");
+  // Default to "Approved" so the listed counts line up with what the
+  // public website shows; admins can switch the dropdown to see others.
+  const [statusType, setStatusType] = useState("Approved");
   const [categoryType, setCategoryType] = useState("Select");
 
   useEffect(() => {
@@ -302,7 +304,7 @@ function RentalProduct() {
                 value={statusType}
                 onChange={(e) => setStatusType(e.target.value)}
               >
-                <option value="">Filter</option>
+                <option value="">All Statuses</option>
                 <option value="Under Review">Under Review</option>
                 <option value="Approved">Approved</option>
                 <option value="Disapproved">Disapproved</option>

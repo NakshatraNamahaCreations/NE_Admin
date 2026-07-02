@@ -28,6 +28,8 @@ import {
   MdOutlineEdit,
   MdOutlineSave,
   MdOutlineImageNotSupported,
+  MdDownload,
+  MdFolderZip,
 } from "react-icons/md";
 import { apiUrl } from "../../../../api-services/apiContents";
 import { useConfirm } from "../../../common/ConfirmProvider";
@@ -80,7 +82,36 @@ const InfoField = memo(function InfoField({ label, value, fallback = "NA" }) {
   );
 });
 
-const LazyImage = memo(function LazyImage({ src, alt, height = 140 }) {
+// Display helper: 123456789012 -> "1234 5678 9012" (space after every 4 digits).
+const formatAadhaar = (val) =>
+  (val || "")
+    .toString()
+    .replace(/\D/g, "")
+    .slice(0, 12)
+    .replace(/(\d{4})(?=\d)/g, "$1 ");
+
+// Vendor document image fields (must match the backend download endpoint).
+const VENDOR_DOC_FIELDS = [
+  { field: "aadhaar_front", label: "Aadhaar Front" },
+  { field: "aadhaar_back", label: "Aadhaar Back" },
+  { field: "pan_front", label: "PAN Front" },
+  { field: "pan_back", label: "PAN Back" },
+  { field: "shop_image_or_logo", label: "Shop Image / Logo" },
+  { field: "vehicle_image", label: "Vehicle Image" },
+];
+
+// Trigger a browser download from a URL. The backend sends the file with a
+// Content-Disposition: attachment header, so this downloads even cross-origin.
+const triggerDownload = (url) => {
+  const a = document.createElement("a");
+  a.href = url;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+};
+
+const LazyImage = memo(function LazyImage({ src, alt, height = 140, onClick }) {
   const [failed, setFailed] = useState(false);
   if (!src || failed) {
     return (
@@ -91,7 +122,10 @@ const LazyImage = memo(function LazyImage({ src, alt, height = 140 }) {
     );
   }
   return (
-    <a href={src} target="_blank" rel="noreferrer" style={styles.imageLink}>
+    <div
+      style={{ ...styles.imageLink, cursor: onClick ? "zoom-in" : "default" }}
+      onClick={onClick ? () => onClick(src) : undefined}
+    >
       <img
         src={src}
         alt={alt}
@@ -99,7 +133,7 @@ const LazyImage = memo(function LazyImage({ src, alt, height = 140 }) {
         onError={() => setFailed(true)}
         style={{ ...styles.image, height }}
       />
-    </a>
+    </div>
   );
 });
 
@@ -155,6 +189,7 @@ function VendorDetails() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
   const [showDisapproveModal, setShowDisapproveModal] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState("");
   const [showProductList, setShowProductList] = useState(false);
@@ -166,6 +201,7 @@ function VendorDetails() {
     accountNumber: "",
     bankName: "",
   });
+  const [bankErrors, setBankErrors] = useState({});
   const [toast, setToast] = useState({
     show: false,
     message: "",
@@ -200,7 +236,52 @@ function VendorDetails() {
 
   const handleBankEdit = useCallback((e) => {
     const { name, value } = e.target;
-    setBankEdit((prev) => ({ ...prev, [name]: value }));
+    let v = value;
+    // Live input sanitization per field.
+    if (name === "accountNumber") {
+      v = value.replace(/\D/g, "").slice(0, 18); // digits only, max 18
+    } else if (name === "ifscCode") {
+      v = value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 11); // IFSC chars
+    } else if (name === "accountHolder") {
+      v = value.replace(/[^A-Za-z\s]/g, "").slice(0, 60); // letters & spaces
+    } else if (name === "bankName" || name === "branchName") {
+      v = value.slice(0, 60);
+    }
+    setBankEdit((prev) => ({ ...prev, [name]: v }));
+    setBankErrors((prev) => ({ ...prev, [name]: "" }));
+  }, []);
+
+  // Validate bank details; returns an errors object ({} when valid).
+  const validateBankDetails = useCallback((data) => {
+    const errs = {};
+    const bankName = (data.bankName || "").trim();
+    const accountHolder = (data.accountHolder || "").trim();
+    const accountNumber = (data.accountNumber || "").trim();
+    const ifscCode = (data.ifscCode || "").trim().toUpperCase();
+    const branchName = (data.branchName || "").trim();
+
+    if (!bankName) errs.bankName = "Bank name is required.";
+    else if (bankName.length < 2)
+      errs.bankName = "Bank name must be at least 2 characters.";
+
+    if (!accountHolder) errs.accountHolder = "Account holder name is required.";
+    else if (!/^[A-Za-z\s]{2,60}$/.test(accountHolder))
+      errs.accountHolder =
+        "Account holder must be 2–60 letters (no digits or symbols).";
+
+    if (!accountNumber) errs.accountNumber = "Account number is required.";
+    else if (!/^\d{9,18}$/.test(accountNumber))
+      errs.accountNumber = "Account number must be 9–18 digits.";
+
+    if (!ifscCode) errs.ifscCode = "IFSC code is required.";
+    else if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifscCode))
+      errs.ifscCode = "Invalid IFSC (e.g., HDFC0001234 — 11 chars).";
+
+    if (!branchName) errs.branchName = "Branch name is required.";
+    else if (branchName.length < 2)
+      errs.branchName = "Branch name must be at least 2 characters.";
+
+    return errs;
   }, []);
 
   const goBack = useCallback(() => {
@@ -305,18 +386,14 @@ function VendorDetails() {
       );
       return;
     }
-    const { bankName, accountHolder, accountNumber, ifscCode, branchName } =
-      bankEdit;
-    if (
-      !bankName ||
-      !accountHolder ||
-      !accountNumber ||
-      !ifscCode ||
-      !branchName
-    ) {
-      showToast("Please fill all bank details", "warning");
+    const errs = validateBankDetails(bankEdit);
+    if (Object.keys(errs).length > 0) {
+      setBankErrors(errs);
+      showToast("Please correct the highlighted bank details.", "warning");
       return;
     }
+    const { bankName, accountHolder, accountNumber, ifscCode, branchName } =
+      bankEdit;
     try {
       setActionLoading("bank");
       const res = await axios.put(
@@ -342,7 +419,7 @@ function VendorDetails() {
     } finally {
       setActionLoading(null);
     }
-  }, [vendor, bankEdit, showToast, refreshVendorList]);
+  }, [vendor, bankEdit, showToast, refreshVendorList, validateBankDetails]);
 
   const openDisapproveModal = useCallback(() => {
     setReason("");
@@ -421,6 +498,7 @@ function VendorDetails() {
                     src={vendor.shop_image_or_logo}
                     alt={vendor.shop_name}
                     height={96}
+                    onClick={setPreviewImage}
                   />
                 </div>
                 <div className="ms-3">
@@ -615,7 +693,10 @@ function VendorDetails() {
                 <Button
                   size="sm"
                   variant="outline-primary"
-                  onClick={() => setBankEditing(true)}
+                  onClick={() => {
+                    setBankErrors({});
+                    setBankEditing(true);
+                  }}
                   style={styles.outlineBtn}
                 >
                   <MdOutlineEdit size={16} /> Edit
@@ -627,6 +708,7 @@ function VendorDetails() {
                     variant="light"
                     onClick={() => {
                       setBankEditing(false);
+                      setBankErrors({});
                       setBankEdit({
                         bankName: vendor.bank_name || "",
                         accountHolder: vendor.account_holder_name || "",
@@ -668,8 +750,13 @@ function VendorDetails() {
                   value={bankEdit.bankName}
                   onChange={handleBankEdit}
                   disabled={!bankEditing}
+                  isInvalid={!!bankErrors.bankName}
+                  maxLength={60}
                   style={styles.formInput}
                 />
+                <Form.Control.Feedback type="invalid">
+                  {bankErrors.bankName}
+                </Form.Control.Feedback>
               </Col>
               <Col md={4} sm={6} className="mb-3">
                 <Form.Label style={styles.fieldLabel}>
@@ -681,8 +768,13 @@ function VendorDetails() {
                   value={bankEdit.accountHolder}
                   onChange={handleBankEdit}
                   disabled={!bankEditing}
+                  isInvalid={!!bankErrors.accountHolder}
+                  maxLength={60}
                   style={styles.formInput}
                 />
+                <Form.Control.Feedback type="invalid">
+                  {bankErrors.accountHolder}
+                </Form.Control.Feedback>
               </Col>
               <Col md={4} sm={6} className="mb-3">
                 <Form.Label style={styles.fieldLabel}>
@@ -694,8 +786,14 @@ function VendorDetails() {
                   value={bankEdit.accountNumber}
                   onChange={handleBankEdit}
                   disabled={!bankEditing}
+                  isInvalid={!!bankErrors.accountNumber}
+                  inputMode="numeric"
+                  maxLength={18}
                   style={styles.formInput}
                 />
+                <Form.Control.Feedback type="invalid">
+                  {bankErrors.accountNumber}
+                </Form.Control.Feedback>
               </Col>
               <Col md={4} sm={6} className="mb-3">
                 <Form.Label style={styles.fieldLabel}>IFSC Code</Form.Label>
@@ -705,8 +803,13 @@ function VendorDetails() {
                   value={bankEdit.ifscCode}
                   onChange={handleBankEdit}
                   disabled={!bankEditing}
+                  isInvalid={!!bankErrors.ifscCode}
+                  maxLength={11}
                   style={styles.formInput}
                 />
+                <Form.Control.Feedback type="invalid">
+                  {bankErrors.ifscCode}
+                </Form.Control.Feedback>
               </Col>
               <Col md={4} sm={6} className="mb-3">
                 <Form.Label style={styles.fieldLabel}>Branch Name</Form.Label>
@@ -716,8 +819,13 @@ function VendorDetails() {
                   value={bankEdit.branchName}
                   onChange={handleBankEdit}
                   disabled={!bankEditing}
+                  isInvalid={!!bankErrors.branchName}
+                  maxLength={60}
                   style={styles.formInput}
                 />
+                <Form.Control.Feedback type="invalid">
+                  {bankErrors.branchName}
+                </Form.Control.Feedback>
               </Col>
             </Row>
           </SectionCard>
@@ -737,35 +845,59 @@ function VendorDetails() {
               <Col md={3} sm={6}>
                 <InfoField
                   label="Aadhaar Number"
-                  value={vendor.aadhaar_number}
+                  value={
+                    vendor.aadhaar_number
+                      ? formatAadhaar(vendor.aadhaar_number)
+                      : null
+                  }
                 />
               </Col>
             </Row>
-            <Row className="mt-2">
-              <Col md={3} sm={6} className="mb-3">
-                <div style={styles.fieldLabel}>Aadhaar Front</div>
-                <LazyImage src={vendor.aadhaar_front} alt="Aadhaar Front" />
+            <Row className="mt-2 mb-2">
+              <Col xs={12} className="d-flex justify-content-end">
+                <Button
+                  size="sm"
+                  variant="success"
+                  disabled={
+                    !VENDOR_DOC_FIELDS.some(({ field }) => vendor[field])
+                  }
+                  onClick={() =>
+                    triggerDownload(
+                      `${apiUrl.BASEURL}/vendor/download-documents/${vendor._id}`
+                    )
+                  }
+                >
+                  <MdFolderZip size={16} className="me-1" />
+                  Download All (ZIP)
+                </Button>
               </Col>
-              <Col md={3} sm={6} className="mb-3">
-                <div style={styles.fieldLabel}>Aadhaar Back</div>
-                <LazyImage src={vendor.aadhaar_back} alt="Aadhaar Back" />
-              </Col>
-              <Col md={3} sm={6} className="mb-3">
-                <div style={styles.fieldLabel}>PAN Front</div>
-                <LazyImage src={vendor.pan_front} alt="PAN Front" />
-              </Col>
-              <Col md={3} sm={6} className="mb-3">
-                <div style={styles.fieldLabel}>PAN Back</div>
-                <LazyImage src={vendor.pan_back} alt="PAN Back" />
-              </Col>
-              <Col md={3} sm={6} className="mb-3">
-                <div style={styles.fieldLabel}>Shop Image / Logo</div>
-                <LazyImage src={vendor.shop_image_or_logo} alt="Shop Logo" />
-              </Col>
-              <Col md={3} sm={6} className="mb-3">
-                <div style={styles.fieldLabel}>Vehicle Image</div>
-                <LazyImage src={vendor.vehicle_image} alt="Vehicle" />
-              </Col>
+            </Row>
+            <Row className="mt-1">
+              {VENDOR_DOC_FIELDS.map(({ field, label }) => (
+                <Col md={3} sm={6} className="mb-3" key={field}>
+                  <div style={styles.fieldLabel}>{label}</div>
+                  <LazyImage
+                    src={vendor[field]}
+                    alt={label}
+                    onClick={setPreviewImage}
+                  />
+                  {vendor[field] && (
+                    <Button
+                      size="sm"
+                      variant="outline-primary"
+                      className="mt-2 w-100"
+                      onClick={() =>
+                        triggerDownload(
+                          `${apiUrl.BASEURL}/vendor/download-document/${vendor._id}/${field}`
+                        )
+                      }
+                    >
+                      <MdDownload size={15} className="me-1" />
+                      Download
+                    </Button>
+                  )}
+                </Col>
+              ))}
             </Row>
           </SectionCard>
 
@@ -881,6 +1013,44 @@ function VendorDetails() {
             ) : (
               "Confirm Disapprove"
             )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Document Image Preview Modal */}
+      <Modal
+        size="lg"
+        centered
+        show={!!previewImage}
+        onHide={() => setPreviewImage(null)}
+      >
+        <Modal.Header closeButton>
+          <Modal.Title style={{ fontSize: 18 }}>Document Preview</Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ textAlign: "center", background: "#f7f8fa" }}>
+          {previewImage && (
+            <img
+              src={previewImage}
+              alt="document preview"
+              style={{
+                maxWidth: "100%",
+                maxHeight: "72vh",
+                objectFit: "contain",
+                borderRadius: 8,
+              }}
+            />
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="outline-primary"
+            onClick={() => triggerDownload(previewImage)}
+          >
+            <MdDownload size={16} className="me-1" />
+            Download
+          </Button>
+          <Button variant="light" onClick={() => setPreviewImage(null)}>
+            Close
           </Button>
         </Modal.Footer>
       </Modal>

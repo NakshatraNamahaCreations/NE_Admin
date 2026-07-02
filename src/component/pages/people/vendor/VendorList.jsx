@@ -204,19 +204,21 @@ function VendorList() {
           >
             <FaEye size={16} color="#ffffff" />
           </div>
-          <div
-            style={{
-              cursor: "pointer",
-              backgroundColor: "#e91e63",
-              padding: "7px 13px",
-              // borderLeftBottomRadius: "3px",
-              // borderLeftTopRadius: "3px",
-            }}
-            title="Delete"
-            onClick={() => deleteVendor(row._id)}
-          >
-            <MdDelete size={16} color="white" />
-          </div>
+          {row.review_status !== "Under Review" && (
+            <div
+              style={{
+                cursor: "pointer",
+                backgroundColor: "#e91e63",
+                padding: "7px 13px",
+                // borderLeftBottomRadius: "3px",
+                // borderLeftTopRadius: "3px",
+              }}
+              title="Delete"
+              onClick={() => deleteVendor(row._id)}
+            >
+              <MdDelete size={16} color="white" />
+            </div>
+          )}
 
           {/* <div
             style={{
