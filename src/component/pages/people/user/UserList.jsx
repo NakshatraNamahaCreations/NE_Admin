@@ -80,10 +80,25 @@ function UserList() {
   };
 
   const searchResults = userList.filter((user) => {
-    if (search) {
-      return user.username.toLowerCase().includes(search.toLowerCase());
-    }
-    return true;
+    if (!search) return true;
+    const query = search.toLowerCase().trim();
+    const company = user.company_profile?.[0] || {};
+    // Global search across all relevant user + company fields.
+    const haystack = [
+      user.username,
+      user.email,
+      user.mobilenumber,
+      company.company_name,
+      company.company_type,
+      company.designation,
+      company.gst_number,
+      company.pan_number,
+      company.cin_number,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(query);
   });
 
   const handleDeleteUser = async (id) => {
@@ -244,7 +259,7 @@ function UserList() {
           <input
             type="search"
             value={search}
-            placeholder="Search name"
+            placeholder="Search by name, email, mobile, company name..."
             onChange={(e) => setSearch(e.target.value)}
             style={{
               fontSize: "14px",
