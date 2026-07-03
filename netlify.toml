@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# SPA fallback: serve index.html for all client-side routes so that
+# direct navigation / page refresh on React Router paths doesn't 404.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
