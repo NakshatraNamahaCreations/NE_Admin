@@ -11,10 +11,39 @@ import { MdEdit } from "react-icons/md";
 import { FaCheckCircle } from "react-icons/fa";
 import { useConfirm } from "../../common/ConfirmProvider";
 
+// Valid 2-letter Indian state/UT codes (GST alpha codes).
+const VALID_STATE_CODES = new Set([
+  "AN", "AP", "AR", "AS", "BR", "CG", "CH", "DN", "DD", "DL", "GA", "GJ",
+  "HR", "HP", "JK", "JH", "KA", "KL", "LA", "LD", "MP", "MH", "MN", "ML",
+  "MZ", "NL", "OD", "OR", "PY", "PB", "RJ", "SK", "TN", "TS", "TR", "UP",
+  "UK", "UT", "WB",
+]);
+
+const validateStateName = (raw) => {
+  const v = (raw || "").replace(/\s+/g, " ").trim();
+  if (!v) return "State is required";
+  if (!/^[A-Za-z ]+$/.test(v)) return "Only letters are allowed";
+  if (v.length < 2) return "Minimum 2 characters required";
+  if (v.length > 50) return "Maximum length exceeded";
+  return "";
+};
+
+const validateStateCode = (raw) => {
+  const v = (raw || "").trim().toUpperCase();
+  if (!v) return "State Code is required";
+  if (!/^[A-Za-z]+$/.test(v)) return "Only letters are allowed";
+  if (v.length < 2) return "Minimum 2 characters required";
+  if (v.length > 2) return "Maximum length exceeded";
+  if (!VALID_STATE_CODES.has(v)) return "Invalid State Code";
+  return "";
+};
+
 function State() {
   const confirm = useConfirm();
   const [stateName, setStateName] = useState("");
   const [stateCode, setStateCode] = useState("");
+  const [stateNameError, setStateNameError] = useState("");
+  const [stateCodeError, setStateCodeError] = useState("");
   const [searchState, setSearchState] = useState("");
   const [stateList, setStateList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,22 +69,24 @@ function State() {
   }, []);
 
   const addState = async () => {
-    if (!stateName || !stateCode) {
-      alert("State Name and State Code should not be empty");
-    } else {
-      try {
-        const data = {
-          state_name: stateName,
-          state_code: stateCode,
-        };
-        const res = await postData(`${apiUrl.ADD_STATE}`, data);
-        if (res) {
-          alert("State Added");
-          window.location.reload();
-        }
-      } catch (error) {
-        console.error("Error:", error);
+    const nameErr = validateStateName(stateName);
+    const codeErr = validateStateCode(stateCode);
+    setStateNameError(nameErr);
+    setStateCodeError(codeErr);
+    if (nameErr || codeErr) return;
+
+    try {
+      const data = {
+        state_name: stateName.replace(/\s+/g, " ").trim(),
+        state_code: stateCode.trim().toUpperCase(),
+      };
+      const res = await postData(`${apiUrl.ADD_STATE}`, data);
+      if (res) {
+        alert("State Added");
+        window.location.reload();
       }
+    } catch (error) {
+      console.error("Error:", error);
     }
   };
   const deleteState = async (id) => {
@@ -296,11 +327,24 @@ function State() {
 
                 <input
                   type="text"
-                  //   value={stateName}
+                  value={stateName}
                   placeholder="e.g. Karnataka"
-                  onChange={(e) => setStateName(e.target.value)}
+                  onChange={(e) => {
+                    setStateName(e.target.value);
+                    setStateNameError(validateStateName(e.target.value));
+                  }}
+                  onBlur={(e) => {
+                    const trimmed = e.target.value.replace(/\s+/g, " ").trim();
+                    setStateName(trimmed);
+                    setStateNameError(validateStateName(trimmed));
+                  }}
                   style={{ fontSize: "14px", padding: "4px 7px" }}
                 />
+                {stateNameError && (
+                  <div style={{ color: "red", fontSize: "12px", marginTop: "3px" }}>
+                    {stateNameError}
+                  </div>
+                )}
               </div>
               <div>
                 <h6 className="mt-3" style={styles.header}>
@@ -309,11 +353,24 @@ function State() {
 
                 <input
                   type="text"
-                  //   value={stateCode}
+                  value={stateCode}
                   placeholder="e.g. KA"
-                  onChange={(e) => setStateCode(e.target.value)}
+                  onChange={(e) => {
+                    setStateCode(e.target.value);
+                    setStateCodeError(validateStateCode(e.target.value));
+                  }}
+                  onBlur={(e) => {
+                    const trimmed = e.target.value.trim().toUpperCase();
+                    setStateCode(trimmed);
+                    setStateCodeError(validateStateCode(trimmed));
+                  }}
                   style={{ fontSize: "14px", padding: "4px 7px" }}
                 />
+                {stateCodeError && (
+                  <div style={{ color: "red", fontSize: "12px", marginTop: "3px" }}>
+                    {stateCodeError}
+                  </div>
+                )}
               </div>
               <div className="mt-3 mb-2">
                 <button onClick={addState} style={styles.buttonForEveything}>

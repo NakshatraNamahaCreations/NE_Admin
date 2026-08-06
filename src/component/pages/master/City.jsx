@@ -11,12 +11,34 @@ import { MdBlock } from "react-icons/md";
 import { MdEdit } from "react-icons/md";
 import { useConfirm } from "../../common/ConfirmProvider";
 
+const validateCityName = (raw) => {
+  const v = (raw || "").replace(/\s+/g, " ").trim();
+  if (!v) return "City Name is required";
+  if (!/^[A-Za-z ]+$/.test(v)) return "Only letters are allowed";
+  if (v.length < 2) return "Minimum 2 characters required";
+  if (v.length > 50) return "Maximum length exceeded";
+  return "";
+};
+
+const validateCityCode = (raw, existingCodes = []) => {
+  const v = (raw || "").trim().toUpperCase();
+  if (!v) return "City Code is required";
+  if (!/^[A-Za-z]+$/.test(v)) return "Invalid City Code";
+  if (v.length < 2) return "Minimum 2 characters required";
+  if (v.length > 5) return "Maximum length exceeded";
+  if (existingCodes.some((c) => (c || "").trim().toUpperCase() === v))
+    return "City Code already exists";
+  return "";
+};
+
 function City() {
   const confirm = useConfirm();
   const [stateName, setStateName] = useState("");
   const [stateId, setStateId] = useState("");
   const [cityName, setCityName] = useState("");
   const [cityCode, setCityCode] = useState("");
+  const [cityNameError, setCityNameError] = useState("");
+  const [cityCodeError, setCityCodeError] = useState("");
   const [searchCity, setSearchCity] = useState("");
   const [cityListData, setCityListData] = useState([]);
   const [stateList, setStateList] = useState([]);
@@ -67,24 +89,33 @@ function City() {
   // console.log("stateList", stateList);
 
   const addCity = async () => {
-    if (!cityName || !stateName) {
-      alert("City and State should not empty");
-    } else {
-      try {
-        const data = {
-          city_name: cityName,
-          state_id: stateId,
-          state_name: stateName,
-          city_code: cityCode,
-        };
-        const res = await postData(`${apiUrl.ADD_CITY}`, data);
-        if (res) {
-          alert("City Added");
-          window.location.reload();
-        }
-      } catch (error) {
-        console.error("Error:", error);
+    const nameErr = validateCityName(cityName);
+    const codeErr = validateCityCode(
+      cityCode,
+      cityListData.map((c) => c.city_code)
+    );
+    setCityNameError(nameErr);
+    setCityCodeError(codeErr);
+    if (!stateName) {
+      alert("Please select a State");
+      return;
+    }
+    if (nameErr || codeErr) return;
+
+    try {
+      const data = {
+        city_name: cityName.replace(/\s+/g, " ").trim(),
+        state_id: stateId,
+        state_name: stateName,
+        city_code: cityCode.trim().toUpperCase(),
+      };
+      const res = await postData(`${apiUrl.ADD_CITY}`, data);
+      if (res) {
+        alert("City Added");
+        window.location.reload();
       }
+    } catch (error) {
+      console.error("Error:", error);
     }
   };
 
@@ -303,9 +334,22 @@ function City() {
                   type="text"
                   value={cityName}
                   placeholder="e.g. Bangalore"
-                  onChange={(e) => setCityName(e.target.value)}
+                  onChange={(e) => {
+                    setCityName(e.target.value);
+                    setCityNameError(validateCityName(e.target.value));
+                  }}
+                  onBlur={(e) => {
+                    const trimmed = e.target.value.replace(/\s+/g, " ").trim();
+                    setCityName(trimmed);
+                    setCityNameError(validateCityName(trimmed));
+                  }}
                   style={{ fontSize: "14px", padding: "4px 7px" }}
                 />
+                {cityNameError && (
+                  <div style={{ color: "red", fontSize: "12px", marginTop: "3px" }}>
+                    {cityNameError}
+                  </div>
+                )}
               </div>
               <div>
                 <h6 className="mt-3" style={styles.header}>
@@ -315,9 +359,32 @@ function City() {
                   type="text"
                   value={cityCode}
                   placeholder="e.g. blr"
-                  onChange={(e) => setCityCode(e.target.value)}
+                  onChange={(e) => {
+                    setCityCode(e.target.value);
+                    setCityCodeError(
+                      validateCityCode(
+                        e.target.value,
+                        cityListData.map((c) => c.city_code)
+                      )
+                    );
+                  }}
+                  onBlur={(e) => {
+                    const trimmed = e.target.value.trim().toUpperCase();
+                    setCityCode(trimmed);
+                    setCityCodeError(
+                      validateCityCode(
+                        trimmed,
+                        cityListData.map((c) => c.city_code)
+                      )
+                    );
+                  }}
                   style={{ fontSize: "14px", padding: "4px 7px" }}
                 />
+                {cityCodeError && (
+                  <div style={{ color: "red", fontSize: "12px", marginTop: "3px" }}>
+                    {cityCodeError}
+                  </div>
+                )}
               </div>
               {/* <div>
                 <h6 className="mt-3" style={styles.header}>
