@@ -6,6 +6,56 @@ import { apiUrl } from "../../../api-services/apiContents";
 import Loader from "../../loader/Loader";
 // import { postData } from "../../../api-services/apiHelper";
 
+const validateCompanyName = (raw) => {
+  if (raw && raw.trim() === "") return "Invalid company name"; // only spaces
+  const v = (raw || "").replace(/\s+/g, " ").trim();
+  if (!v) return "Company name is required";
+  if (!/^[A-Za-z0-9 &.,'()-]+$/.test(v)) return "Invalid company name";
+  if (!/[A-Za-z]/.test(v)) return "Invalid company name"; // numbers only
+  return "";
+};
+
+const validateCorporateAddress = (raw) => {
+  const v = (raw || "").replace(/\s+/g, " ").trim();
+  if (!v) return "Corporate Address is required";
+  if (!/[A-Za-z]/.test(v)) return "Address must contain letters";
+  if (v.length < 5) return "Minimum 5 characters required";
+  return "";
+};
+
+const validateEmail = (raw) => {
+  const v = (raw || "").trim();
+  if (!v) return "Email ID is required";
+  if (/\s/.test(v)) return "Email cannot contain spaces";
+  if ((v.match(/@/g) || []).length !== 1) return "Invalid email address";
+  const [local] = v.split("@");
+  if (local && /[^A-Za-z0-9._%+-]/.test(local))
+    return "Invalid character in email";
+  const re = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+  if (!re.test(v)) return "Invalid email address";
+  if (v.length > 254) return "Email is too long";
+  return "";
+};
+
+const validatePhone = (raw) => {
+  const v = (raw || "").trim();
+  if (!v) return "Phone number is required";
+  const digits = v.replace(/^\+91/, "").replace(/\s/g, "");
+  if (!/^[0-9]+$/.test(digits)) return "Only numbers are allowed";
+  if (digits.length !== 10) return "Phone number must be 10 digits";
+  return "";
+};
+
+// Website URL is optional; when provided it must be a valid http/https URL.
+const validateWebsiteUrl = (raw) => {
+  const hadContent = !!(raw && raw.length);
+  const v = (raw || "").trim();
+  if (!v) return hadContent ? "Invalid website URL" : ""; // only-spaces vs empty
+  const re = /^https?:\/\/[^\s.]+\.[^\s]{2,}$/i;
+  if (!re.test(v)) return "Invalid website URL";
+  return "";
+};
+
 function CompanyProfile() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [profileData, setProfileData] = useState({});
@@ -20,6 +70,7 @@ function CompanyProfile() {
   const [footerText, setFooterText] = useState("");
   const [mediaName, setMediaName] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
+  const [errors, setErrors] = useState({});
 
   const addMedia = () => setIsModalOpen(true);
 
@@ -58,10 +109,16 @@ function CompanyProfile() {
   console.log("profileData", profileData);
 
   const addProfile = async () => {
-    if (!comanyName) {
-      alert("Please enter company name");
-      return;
-    }
+    const nextErrors = {
+      companyName: validateCompanyName(comanyName),
+      companyAddress: validateCorporateAddress(companyAddress),
+      contactPhone: validatePhone(contactPhone),
+      contactEmail: validateEmail(contactEmail),
+      websiteUrl: validateWebsiteUrl(websiteUrl),
+    };
+    setErrors(nextErrors);
+    if (Object.values(nextErrors).some((e) => e)) return;
+
     const formData = new FormData();
 
     formData.append("company_name", comanyName);
@@ -160,9 +217,22 @@ function CompanyProfile() {
               <input
                 style={styles.input}
                 value={comanyName}
-                // onChange={handleCompanyNameChange}
-                onChange={(e) => setComanyName(e.target.value)}
+                onChange={(e) => {
+                  setComanyName(e.target.value);
+                  setErrors((p) => ({
+                    ...p,
+                    companyName: validateCompanyName(e.target.value),
+                  }));
+                }}
+                onBlur={(e) => {
+                  const t = e.target.value.replace(/\s+/g, " ").trim();
+                  setComanyName(t);
+                  setErrors((p) => ({ ...p, companyName: validateCompanyName(t) }));
+                }}
               />
+              {errors.companyName && (
+                <div style={styles.errorText}>{errors.companyName}</div>
+              )}
             </div>
           </div>
         </div>
@@ -177,8 +247,25 @@ function CompanyProfile() {
               <textarea
                 style={styles.input}
                 value={companyAddress}
-                onChange={(e) => setCompanyAddress(e.target.value)}
+                onChange={(e) => {
+                  setCompanyAddress(e.target.value);
+                  setErrors((p) => ({
+                    ...p,
+                    companyAddress: validateCorporateAddress(e.target.value),
+                  }));
+                }}
+                onBlur={(e) => {
+                  const t = e.target.value.replace(/\s+/g, " ").trim();
+                  setCompanyAddress(t);
+                  setErrors((p) => ({
+                    ...p,
+                    companyAddress: validateCorporateAddress(t),
+                  }));
+                }}
               />
+              {errors.companyAddress && (
+                <div style={styles.errorText}>{errors.companyAddress}</div>
+              )}
             </div>
           </div>
         </div>
@@ -325,8 +412,23 @@ function CompanyProfile() {
               <input
                 style={styles.input}
                 value={contactPhone}
-                onChange={(e) => setContactPhone(e.target.value)}
+                maxLength={15}
+                onChange={(e) => {
+                  setContactPhone(e.target.value);
+                  setErrors((p) => ({
+                    ...p,
+                    contactPhone: validatePhone(e.target.value),
+                  }));
+                }}
+                onBlur={(e) => {
+                  const t = e.target.value.trim();
+                  setContactPhone(t);
+                  setErrors((p) => ({ ...p, contactPhone: validatePhone(t) }));
+                }}
               />
+              {errors.contactPhone && (
+                <div style={styles.errorText}>{errors.contactPhone}</div>
+              )}
             </div>
           </div>
         </div>
@@ -341,8 +443,23 @@ function CompanyProfile() {
               <input
                 style={styles.input}
                 value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
+                maxLength={254}
+                onChange={(e) => {
+                  setContactEmail(e.target.value);
+                  setErrors((p) => ({
+                    ...p,
+                    contactEmail: validateEmail(e.target.value),
+                  }));
+                }}
+                onBlur={(e) => {
+                  const t = e.target.value.trim();
+                  setContactEmail(t);
+                  setErrors((p) => ({ ...p, contactEmail: validateEmail(t) }));
+                }}
               />
+              {errors.contactEmail && (
+                <div style={styles.errorText}>{errors.contactEmail}</div>
+              )}
             </div>
           </div>
         </div>
@@ -355,8 +472,22 @@ function CompanyProfile() {
               <input
                 style={styles.input}
                 value={websiteUrl}
-                onChange={(e) => setWebsiteUrl(e.target.value)}
+                onChange={(e) => {
+                  setWebsiteUrl(e.target.value);
+                  setErrors((p) => ({
+                    ...p,
+                    websiteUrl: validateWebsiteUrl(e.target.value),
+                  }));
+                }}
+                onBlur={(e) => {
+                  const t = e.target.value.trim();
+                  setWebsiteUrl(t);
+                  setErrors((p) => ({ ...p, websiteUrl: validateWebsiteUrl(t) }));
+                }}
               />
+              {errors.websiteUrl && (
+                <div style={styles.errorText}>{errors.websiteUrl}</div>
+              )}
             </div>
           </div>
         </div>
@@ -545,6 +676,11 @@ const styles = {
   },
   leftFont: {
     fontSize: "14px",
+  },
+  errorText: {
+    color: "red",
+    fontSize: "12px",
+    marginTop: "3px",
   },
   tableHead: {
     backgroundColor: "#cecece",
