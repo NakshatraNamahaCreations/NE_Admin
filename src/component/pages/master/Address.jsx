@@ -12,6 +12,45 @@ import { MdEdit } from "react-icons/md";
 import { Button, Modal } from "react-bootstrap";
 import { useConfirm } from "../../common/ConfirmProvider";
 
+const validateEmail = (raw) => {
+  const v = (raw || "").trim();
+  if (!v) return "Email ID is required";
+  if (/\s/.test(v)) return "Email cannot contain spaces";
+  if ((v.match(/@/g) || []).length !== 1) return "Invalid email address";
+  const [local] = v.split("@");
+  if (local && /[^A-Za-z0-9._%+-]/.test(local))
+    return "Invalid character in email";
+  const re = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+  if (!re.test(v)) return "Invalid email address";
+  if (v.length > 254) return "Email is too long";
+  return "";
+};
+
+const validatePhone = (raw) => {
+  const v = (raw || "").trim();
+  if (!v) return "Phone number is required";
+  // Allow an optional +91 country code and internal spaces.
+  const digits = v.replace(/^\+91/, "").replace(/\s/g, "");
+  if (!/^[0-9]+$/.test(digits)) return "Only numbers are allowed";
+  if (digits.length !== 10) return "Phone number must be 10 digits";
+  return "";
+};
+
+const validateAddress = (raw, existing = []) => {
+  const v = (raw || "").replace(/\s+/g, " ").trim();
+  if (!v) return "Address is required";
+  if (!/[A-Za-z0-9]/.test(v)) return "Please enter a valid address"; // only specials/emoji
+  if (v.length < 5) return "Minimum 5 characters required";
+  if (v.length > 250) return "Maximum length exceeded";
+  if (
+    existing.some(
+      (a) => (a || "").replace(/\s+/g, " ").trim().toLowerCase() === v.toLowerCase()
+    )
+  )
+    return "Address already exists";
+  return "";
+};
+
 function Address() {
   const confirm = useConfirm();
   const [stateName, setStateName] = useState("");
@@ -21,6 +60,9 @@ function Address() {
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  const [addressError, setAddressError] = useState("");
   const [searchName, setSearchName] = useState("");
   const [cityListData, setCityListData] = useState([]);
   const [stateList, setStateList] = useState([]);
@@ -105,25 +147,36 @@ function Address() {
   const addAddress = async () => {
     if (!cityName || !stateName) {
       alert("City and State should not empty");
-    } else {
-      try {
-        const data = {
-          city_name: cityName,
-          state_id: selectedStateId,
-          city_id: selectedCityId,
-          state_name: stateName,
-          address: address,
-          contact_email: contactEmail,
-          contact_phone: contactPhone,
-        };
-        const res = await postData(`${apiUrl.ADD_ADDRESS}`, data);
-        if (res) {
-          alert("Address Added");
-          window.location.reload();
-        }
-      } catch (error) {
-        console.error("Error:", error);
+      return;
+    }
+    const emailErr = validateEmail(contactEmail);
+    const phoneErr = validatePhone(contactPhone);
+    const addressErr = validateAddress(
+      address,
+      allAddress.map((a) => a.address)
+    );
+    setEmailError(emailErr);
+    setPhoneError(phoneErr);
+    setAddressError(addressErr);
+    if (emailErr || phoneErr || addressErr) return;
+
+    try {
+      const data = {
+        city_name: cityName,
+        state_id: selectedStateId,
+        city_id: selectedCityId,
+        state_name: stateName,
+        address: address.replace(/\s+/g, " ").trim(),
+        contact_email: contactEmail.trim(),
+        contact_phone: contactPhone.replace(/^\+91/, "").replace(/\s/g, "").trim(),
+      };
+      const res = await postData(`${apiUrl.ADD_ADDRESS}`, data);
+      if (res) {
+        alert("Address Added");
+        window.location.reload();
       }
+    } catch (error) {
+      console.error("Error:", error);
     }
   };
 
@@ -391,9 +444,24 @@ function Address() {
               <div className="col-md-8">
                 <input
                   style={styles.borderItems}
-                  onChange={(e) => setContactEmail(e.target.value)}
+                  value={contactEmail}
+                  maxLength={254}
+                  onChange={(e) => {
+                    setContactEmail(e.target.value);
+                    setEmailError(validateEmail(e.target.value));
+                  }}
+                  onBlur={(e) => {
+                    const t = e.target.value.trim();
+                    setContactEmail(t);
+                    setEmailError(validateEmail(t));
+                  }}
                   type="text"
                 />
+                {emailError && (
+                  <div style={{ color: "red", fontSize: "12px", marginTop: "3px" }}>
+                    {emailError}
+                  </div>
+                )}
               </div>
             </div>
             <div className="row mt-2">
@@ -405,9 +473,24 @@ function Address() {
               <div className="col-md-8">
                 <input
                   style={styles.borderItems}
-                  onChange={(e) => setContactPhone(e.target.value)}
+                  value={contactPhone}
+                  maxLength={15}
+                  onChange={(e) => {
+                    setContactPhone(e.target.value);
+                    setPhoneError(validatePhone(e.target.value));
+                  }}
+                  onBlur={(e) => {
+                    const t = e.target.value.trim();
+                    setContactPhone(t);
+                    setPhoneError(validatePhone(t));
+                  }}
                   type="text"
                 />
+                {phoneError && (
+                  <div style={{ color: "red", fontSize: "12px", marginTop: "3px" }}>
+                    {phoneError}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -419,9 +502,33 @@ function Address() {
               </div>
               <div className="col-md-8">
                 <textarea
-                  onChange={(e) => setAddress(e.target.value)}
+                  value={address}
+                  onChange={(e) => {
+                    setAddress(e.target.value);
+                    setAddressError(
+                      validateAddress(
+                        e.target.value,
+                        allAddress.map((a) => a.address)
+                      )
+                    );
+                  }}
+                  onBlur={(e) => {
+                    const t = e.target.value.replace(/\s+/g, " ").trim();
+                    setAddress(t);
+                    setAddressError(
+                      validateAddress(
+                        t,
+                        allAddress.map((a) => a.address)
+                      )
+                    );
+                  }}
                   style={styles.borderItems}
                 />
+                {addressError && (
+                  <div style={{ color: "red", fontSize: "12px", marginTop: "3px" }}>
+                    {addressError}
+                  </div>
+                )}
               </div>
             </div>
           </div>
